@@ -65,6 +65,9 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: "Architecture", link: "/development/architecture" },
+              { text: "System Architecture", link: "/ARCHITECTURE" },
+              { text: "Specification", link: "/SPECIFICATION" },
+              { text: "Roadmap", link: "/ROADMAP" },
               { text: "Contributing", link: "/CONTRIBUTING" },
               { text: "Security", link: "/SECURITY" },
             ],

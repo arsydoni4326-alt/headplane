@@ -1,5 +1,15 @@
 # Next
 
+- Added project-guidelines documentation: a system-level Architecture
+  overview, a Specification with functional and non-functional requirements
+  and acceptance criteria, and a Roadmap. All three are linked from the docs
+  site sidebar under Development, alongside the existing server-side
+  architecture patterns page.
+
+## Changes
+
+## Fixes
+
 # 0.7.1 (August 27, 2026)
 
 ## Changes
