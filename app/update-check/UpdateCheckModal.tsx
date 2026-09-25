@@ -2,7 +2,7 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 
 import Button from "~/components/button";
 import Link from "~/components/link";
-import { Dialog, DialogPanel } from "~/components/dialog";
+import Dialog, { DialogPanel } from "~/components/dialog";
 import type { UpdateCheckResult, UpdateCheckState } from "./types";
 import { hasUpdates, useUpdateCheckContext } from "./UpdateCheckProvider";
 
