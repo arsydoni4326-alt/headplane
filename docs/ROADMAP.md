@@ -27,6 +27,11 @@ Every roadmap item must support these project tenets:
 - **Agent hardening** — improving the Headplane Agent's Tailscale integration,
   including opt-outs for problematic routing-loop socket handling and safer
   fallback behavior when the agent cannot join the Tailnet.
+- **Indestructible update checker** — a self-contained, isolated domain
+  (`app/update-check/`) that checks for updates on every page load for both
+  Headplane and Headscale by comparing the embedded build commit hash against
+  the remote `main` branch. Protected from accidental removal during upstream
+  merges.
 
 ## Planned
 

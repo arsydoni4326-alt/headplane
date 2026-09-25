@@ -91,7 +91,18 @@ functionality of the official Tailscale admin console.
   values (the raw, unformatted number is submitted and malformed values are
   rejected with a 400).
 
-## Non-Functional Requirements
+### FR-10: Update Checking
+
+- **FR-10.1**: The UI checks for updates on every page load (and on demand via
+  a "Check for Updates" button) by comparing the Docker build commit hash
+  (`__COMMIT_HASH__`) against the latest commit on the remote `main` branch of
+  both [headplane](https://github.com/arsydoni4326-alt/headplane) and
+  [headscale](https://github.com/arsydoni4326-alt/headscale) repositories.
+- **FR-10.2**: If an update is available, a modal is shown with details
+  (current vs. remote commit, links to compare changes and releases).
+- **FR-10.3**: The feature lives in a self-contained `app/update-check/`
+  domain that is isolated from the rest of the codebase to survive upstream
+  merges. It must not be removed or modified by upstream patches.
 
 ### NFR-1: Compatibility
 

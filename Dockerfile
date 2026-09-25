@@ -45,7 +45,7 @@ COPY --from=go-base /bin/wasm_exec.js /run/public/wasm_exec.js
 RUN ./build.sh --app --app-install-only
 
 COPY . .
-RUN HEADPLANE_VERSION=$APP_VERSION ./build.sh --app
+RUN HEADPLANE_VERSION=$APP_VERSION HEADPLANE_COMMIT=$APP_COMMIT ./build.sh --app
 
 FROM gcr.io/distroless/nodejs24-debian13:latest AS final
 COPY --from=js-base /run/build /app/build
