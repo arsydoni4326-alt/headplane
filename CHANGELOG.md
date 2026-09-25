@@ -1,4 +1,13 @@
-# Next
+# 0.7.4-arsydoni4326-alt (September 25, 2026)
+
+- Added `APP_VERSION`, `APP_COMMIT`, and `BUILD_DATE` build arguments to the
+  Dockerfile for embedding version information in the built image.
+
+## Changes
+
+## Fixes
+
+---
 
 # 0.7.3-arsydoni4326-alt (September 25, 2026)
 
