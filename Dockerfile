@@ -12,7 +12,10 @@ COPY internal/ ./internal/
 ARG TARGETOS
 ARG TARGETARCH
 ARG IMAGE_TAG
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 IMAGE_TAG=$IMAGE_TAG \
+ARG APP_VERSION=v0.0.0
+ARG APP_COMMIT=unknown
+ARG BUILD_DATE=2025-09-09
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 IMAGE_TAG=$APP_VERSION \
 	./build.sh --wasm --agent --fake-shell --healthcheck \
 		--wasm-output /bin/hp_ssh.wasm \
 		--agent-output /bin/hp_agent \
