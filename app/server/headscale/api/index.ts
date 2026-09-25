@@ -37,6 +37,12 @@ export interface Headscale {
   readonly capabilities: Capabilities;
   /** True if the Headscale server's `/health` endpoint returns 200. */
   health(): Promise<boolean>;
+  /**
+   * Fetch update-check info from the server's unauthenticated
+   * `/api/v1/update-check` endpoint. Query parameters (e.g.
+   * `check=true`) are forwarded verbatim.
+   */
+  updateCheck(query?: Record<string, unknown>): Promise<UpdateCheckResponse>;
   /** Build an API client bound to a specific Headscale API key. */
   client(apiKey: string): HeadscaleClient;
   /** Stop background work and close the underlying HTTP agent. */
@@ -50,6 +56,27 @@ export interface HeadscaleClient {
   preAuthKeys: PreAuthKeyApi;
   apiKeys: ApiKeyApi;
   auth: AuthApi;
+}
+
+/**
+ * Response shape of the unauthenticated `GET /api/v1/update-check`
+ * endpoint. Without `?check=true` only `current` is populated; with
+ * `?check=true` the server additionally fetches the remote commit and
+ * sets `updateAvailable`/`remote` (or `error` on failure).
+ */
+export interface UpdateCheckResponse {
+  current?: {
+    version?: string;
+    commit?: string;
+    buildTime?: string;
+    dirty?: boolean;
+  };
+  updateAvailable?: boolean;
+  remote?: {
+    commit?: string;
+    url?: string;
+  };
+  error?: string;
 }
 
 export interface CreateHeadscaleOptions {
@@ -144,6 +171,7 @@ export async function createHeadscale(opts: CreateHeadscaleOptions): Promise<Hea
       return capabilities;
     },
     health: () => transport.health(),
+    updateCheck: (query) => transport.getPublic<UpdateCheckResponse>("/api/v1/update-check", query),
     client(apiKey) {
       return {
         nodes: makeNodeApi(transport, capabilities, apiKey),

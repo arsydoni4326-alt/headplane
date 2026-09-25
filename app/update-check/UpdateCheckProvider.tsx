@@ -1,16 +1,6 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
-import type {
-  UpdateCheckResult,
-  UpdateCheckState,
-} from "./types";
+import type { UpdateCheckResult, UpdateCheckState } from "./types";
 
 export type UpdateCheckTrigger = "manual" | "auto";
 
@@ -22,11 +12,7 @@ interface UpdateCheckContextValue extends UpdateCheckState {
    * Set the version info needed for update checks.
    * Must be called before checkNow is first invoked.
    */
-  setVersionInfo: (info: {
-    headplaneCommit: string;
-    headscaleVersion: string;
-    headscaleBaseUrl: string;
-  }) => void;
+  setVersionInfo: (info: { headplaneCommit: string; headscaleVersion: string }) => void;
 }
 
 const UpdateCheckContext = createContext<UpdateCheckContextValue | null>(null);
@@ -37,7 +23,6 @@ const HEADSCALE_REPO = "https://github.com/arsydoni4326-alt/headscale.git";
 async function performCheck(
   headplaneCommit: string,
   headscaleVersion: string,
-  headscaleBaseUrl: string,
 ): Promise<{
   headplaneUpdate: UpdateCheckResult | null;
   headscaleUpdate: UpdateCheckResult | null;
@@ -45,8 +30,8 @@ async function performCheck(
   const [headplaneResult, headscaleResult] = await Promise.all([
     // Headplane: check via GitHub API directly (browser-side)
     fetchRemoteCommit(headplaneCommit, HEADPLANE_REPO, "Headplane"),
-    // Headscale: check via headscale's own /api/v1/update-check endpoint
-    fetchHeadscaleUpdate(headscaleBaseUrl),
+    // Headscale: check via Headplane's backend /api/update-check endpoint
+    fetchHeadscaleUpdate(),
   ]);
 
   return {
@@ -56,16 +41,13 @@ async function performCheck(
 }
 
 /**
- * Fetch headscale update info from the headscale server's own
- * /api/v1/update-check?check=true endpoint. This avoids hitting
- * GitHub API directly from the browser for headscale checks.
+ * Fetch headscale update info through Headplane's backend proxy at
+ * /api/update-check. The browser never talks to Headscale directly;
+ * Headplane forwards the request server-side, keeping the internal
+ * Headscale URL private.
  */
-async function fetchHeadscaleUpdate(
-  headscaleBaseUrl: string,
-): Promise<UpdateCheckResult | null> {
-  // Normalize base URL: strip trailing slash
-  const base = headscaleBaseUrl.replace(/\/+$/, "");
-  const url = `${base}/api/v1/update-check?check=true`;
+async function fetchHeadscaleUpdate(): Promise<UpdateCheckResult | null> {
+  const url = `${__PREFIX__}/api/update-check?check=true`;
 
   try {
     const response = await fetch(url, {
@@ -94,13 +76,9 @@ async function fetchHeadscaleUpdate(
       return null;
     }
 
-    const currentCommit = data.current?.commit
-      ? data.current.commit.slice(0, 7)
-      : "unknown";
+    const currentCommit = data.current?.commit ? data.current.commit.slice(0, 7) : "unknown";
     const remoteCommit = data.remote?.commit ?? "unknown";
-    const repoUrl = data.remote?.url
-      ? `${data.remote.url}.git`
-      : HEADSCALE_REPO;
+    const repoUrl = data.remote?.url ? `${data.remote.url}.git` : HEADSCALE_REPO;
 
     return {
       currentCommit,
@@ -160,27 +138,18 @@ async function fetchRemoteCommit(
   }
 }
 
-function parseGitHubUrl(
-  url: string,
-): { owner: string; repo: string } | null {
-  const httpsMatch = url.match(
-    /github\.com[:/]([^/]+)\/([^/.]+)(?:\.git)?/,
-  );
+function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
+  const httpsMatch = url.match(/github\.com[:/]([^/]+)\/([^/.]+)(?:\.git)?/);
   if (httpsMatch) {
     return { owner: httpsMatch[1], repo: httpsMatch[2] };
   }
   return null;
 }
 
-export function UpdateCheckProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function UpdateCheckProvider({ children }: { children: React.ReactNode }) {
   const versionInfoRef = useRef<{
     headplaneCommit: string;
     headscaleVersion: string;
-    headscaleBaseUrl: string;
   } | null>(null);
 
   const [state, setState] = useState<UpdateCheckState>({
@@ -190,58 +159,46 @@ export function UpdateCheckProvider({
     error: null,
   });
 
-  const [lastTrigger, setLastTrigger] = useState<UpdateCheckTrigger | null>(
-    null,
-  );
+  const [lastTrigger, setLastTrigger] = useState<UpdateCheckTrigger | null>(null);
   const autoCheckedRef = useRef(false);
 
   const setVersionInfo = useCallback(
-    (info: { headplaneCommit: string; headscaleVersion: string; headscaleBaseUrl: string }) => {
+    (info: { headplaneCommit: string; headscaleVersion: string }) => {
       versionInfoRef.current = info;
     },
     [],
   );
 
-  const checkNow = useCallback(
-    async (trigger: UpdateCheckTrigger = "manual") => {
-      const info = versionInfoRef.current;
-      if (!info) {
-        setState((prev) => ({
-          ...prev,
-          error: "Version info not yet available",
-        }));
-        return;
-      }
+  const checkNow = useCallback(async (trigger: UpdateCheckTrigger = "manual") => {
+    const info = versionInfoRef.current;
+    if (!info) {
+      setState((prev) => ({
+        ...prev,
+        error: "Version info not yet available",
+      }));
+      return;
+    }
 
-      setState((prev) => ({ ...prev, isChecking: true, error: null }));
-      setLastTrigger(trigger);
+    setState((prev) => ({ ...prev, isChecking: true, error: null }));
+    setLastTrigger(trigger);
 
-      try {
-        const results = await performCheck(
-          info.headplaneCommit,
-          info.headscaleVersion,
-          info.headscaleBaseUrl,
-        );
+    try {
+      const results = await performCheck(info.headplaneCommit, info.headscaleVersion);
 
-        setState({
-          isChecking: false,
-          ...results,
-          error: null,
-        });
-      } catch (err) {
-        setState({
-          isChecking: false,
-          headplaneUpdate: null,
-          headscaleUpdate: null,
-          error:
-            err instanceof Error
-              ? err.message
-              : "Failed to check for updates",
-        });
-      }
-    },
-    [],
-  );
+      setState({
+        isChecking: false,
+        ...results,
+        error: null,
+      });
+    } catch (err) {
+      setState({
+        isChecking: false,
+        headplaneUpdate: null,
+        headscaleUpdate: null,
+        error: err instanceof Error ? err.message : "Failed to check for updates",
+      });
+    }
+  }, []);
 
   const clearResults = useCallback(() => {
     setState({
@@ -263,19 +220,13 @@ export function UpdateCheckProvider({
     [state, checkNow, clearResults, lastTrigger, setVersionInfo],
   );
 
-  return (
-    <UpdateCheckContext.Provider value={value}>
-      {children}
-    </UpdateCheckContext.Provider>
-  );
+  return <UpdateCheckContext.Provider value={value}>{children}</UpdateCheckContext.Provider>;
 }
 
 export function useUpdateCheckContext(): UpdateCheckContextValue {
   const ctx = useContext(UpdateCheckContext);
   if (!ctx) {
-    throw new Error(
-      "useUpdateCheckContext must be used within an <UpdateCheckProvider>",
-    );
+    throw new Error("useUpdateCheckContext must be used within an <UpdateCheckProvider>");
   }
   return ctx;
 }
@@ -284,17 +235,12 @@ export function useUpdateCheckContext(): UpdateCheckContextValue {
  * Check whether there are any updates available.
  */
 export function hasUpdates(state: UpdateCheckState): boolean {
-  return (
-    state.headplaneUpdate !== null || state.headscaleUpdate !== null
-  );
+  return state.headplaneUpdate !== null || state.headscaleUpdate !== null;
 }
 
 /**
  * Count of available updates.
  */
 export function updateCount(state: UpdateCheckState): number {
-  return (
-    (state.headplaneUpdate !== null ? 1 : 0) +
-    (state.headscaleUpdate !== null ? 1 : 0)
-  );
+  return (state.headplaneUpdate !== null ? 1 : 0) + (state.headscaleUpdate !== null ? 1 : 0);
 }

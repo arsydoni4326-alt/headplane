@@ -103,6 +103,10 @@ functionality of the official Tailscale admin console.
 - **FR-10.3**: The feature lives in a self-contained `app/update-check/`
   domain that is isolated from the rest of the codebase to survive upstream
   merges. It must not be removed or modified by upstream patches.
+- **FR-10.4**: Headscale update checks are proxied through Headplane's backend
+  at `/admin/api/update-check`, which forwards all query parameters to
+  Headscale's `/api/v1/update-check` endpoint. The browser never talks to
+  Headscale directly, keeping the internal Headscale URL private.
 
 ### NFR-1: Compatibility
 
