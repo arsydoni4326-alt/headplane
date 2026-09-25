@@ -1,5 +1,7 @@
 # Next
 
+# 0.7.3-arsydoni4326-alt (September 25, 2026)
+
 - Added project-guidelines documentation: a system-level Architecture
   overview, a Specification with functional and non-functional requirements
   and acceptance criteria, and a Roadmap. All three are linked from the docs
@@ -8,7 +10,14 @@
 
 ## Changes
 
+- The Docker image now embeds the app version, commit, and build date via
+  `APP_VERSION`, `APP_COMMIT`, and `BUILD_DATE` build arguments, and a new
+  GitHub Actions workflow builds and pushes multi-arch (amd64/arm64) images
+  to GHCR on every push to `main`.
+
 ## Fixes
+
+---
 
 # 0.7.1 (August 27, 2026)
 
