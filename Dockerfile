@@ -29,6 +29,9 @@ RUN mkdir -p /var/lib/headplane/agent
 
 FROM --platform=$BUILDPLATFORM node:24-slim AS js-base
 WORKDIR /run
+ARG APP_VERSION=v0.0.0
+ARG APP_COMMIT=unknown
+ARG BUILD_DATE=2025-09-09
 
 RUN corepack enable
 COPY patches ./patches
@@ -39,8 +42,7 @@ COPY --from=go-base /bin/wasm_exec.js /run/public/wasm_exec.js
 RUN ./build.sh --app --app-install-only
 
 COPY . .
-ARG HEADPLANE_VERSION
-RUN HEADPLANE_VERSION=$HEADPLANE_VERSION ./build.sh --app
+RUN HEADPLANE_VERSION=$APP_VERSION ./build.sh --app
 
 FROM gcr.io/distroless/nodejs24-debian13:latest AS final
 COPY --from=js-base /run/build /app/build
