@@ -1,3 +1,20 @@
+# 0.7.6-arsydoni4326-alt (September 25, 2026)
+
+- Headscale update checks are now proxied through Headplane's backend at
+  `/admin/api/update-check` instead of the browser calling Headscale directly.
+  This keeps the internal Headscale URL private and avoids CORS issues.
+
+## Changes
+
+- Added a backend proxy route `/admin/api/update-check` that forwards all query
+  parameters to Headscale's `/api/v1/update-check` endpoint.
+- The update-check UI now calls the Headplane backend instead of the Headscale
+  server directly; the browser no longer needs to know the Headscale URL.
+
+---
+
+# Next
+
 # 0.7.5-arsydoni4326-alt (September 25, 2026)
 
 - Added an indestructible "Check for Updates" feature in a self-contained
@@ -12,21 +29,6 @@
 - Headplane now calls the Headscale server's `/api/v1/update-check` endpoint
   for Headscale version checks instead of GitHub API directly from the browser
 - Updated docs: `ROADMAP.md` (In Progress) and `SPECIFICATION.md` (FR-10)
-
----
-
-# 0.7.6-arsydoni4326-alt (September 25, 2026)
-
-- Headscale update checks are now proxied through Headplane's backend at
-  `/admin/api/update-check` instead of the browser calling Headscale directly.
-  This keeps the internal Headscale URL private and avoids CORS issues.
-
-## Changes
-
-- Added a backend proxy route `/admin/api/update-check` that forwards all query
-  parameters to Headscale's `/api/v1/update-check` endpoint.
-- The update-check UI now calls the Headplane backend instead of the Headscale
-  server directly; the browser no longer needs to know the Headscale URL.
 
 ---
 
