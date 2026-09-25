@@ -15,7 +15,7 @@
 
 ---
 
-# Next
+# 0.7.6-arsydoni4326-alt (September 25, 2026)
 
 - Headscale update checks are now proxied through Headplane's backend at
   `/admin/api/update-check` instead of the browser calling Headscale directly.
@@ -27,6 +27,8 @@
   parameters to Headscale's `/api/v1/update-check` endpoint.
 - The update-check UI now calls the Headplane backend instead of the Headscale
   server directly; the browser no longer needs to know the Headscale URL.
+
+---
 
 # 0.7.4-arsydoni4326-alt (September 25, 2026)
 
