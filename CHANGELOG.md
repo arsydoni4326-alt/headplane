@@ -1,3 +1,20 @@
+# 0.7.5-arsydoni4326-alt (September 25, 2026)
+
+- Added an indestructible "Check for Updates" feature in a self-contained
+  `app/update-check/` domain. The UI checks for updates on every page load
+  (and on demand via the user menu) for both Headplane and Headscale,
+  comparing the Docker build commit hash against the remote `main` branch.
+  The domain is isolated to survive upstream merges.
+
+## Changes
+
+- Added `__COMMIT_HASH__` global build define (from `APP_COMMIT` / `HEADPLANE_COMMIT`)
+- Headplane now calls the Headscale server's `/api/v1/update-check` endpoint
+  for Headscale version checks instead of GitHub API directly from the browser
+- Updated docs: `ROADMAP.md` (In Progress) and `SPECIFICATION.md` (FR-10)
+
+---
+
 # Next
 
 # 0.7.4-arsydoni4326-alt (September 25, 2026)
