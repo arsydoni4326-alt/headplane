@@ -43,7 +43,7 @@ export interface Transport {
    * Send an unauthenticated GET against the server root
    * (e.g. `/version`, `/health`). Returns parsed JSON.
    */
-  getPublic<T>(path: `/${string}`): Promise<T>;
+  getPublic<T>(path: `/${string}`, query?: Record<string, unknown>): Promise<T>;
 
   /** True if `GET /health` returns 200. Never throws. */
   health(): Promise<boolean>;
@@ -132,8 +132,21 @@ export async function createTransport(opts: TransportOptions): Promise<Transport
       return res.body.json() as Promise<T>;
     },
 
-    async getPublic<T>(path: `/${string}`): Promise<T> {
-      const res = await rawRequest(path, { method: "GET" });
+    async getPublic<T>(path: `/${string}`, query?: Record<string, unknown>): Promise<T> {
+      let url: string = path;
+      if (query) {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(query)) {
+          if (value !== undefined) {
+            params.append(key, String(value));
+          }
+        }
+        const qs = params.toString();
+        if (qs) {
+          url += `?${qs}`;
+        }
+      }
+      const res = await rawRequest(url, { method: "GET" });
       if (res.statusCode >= 400) {
         const rawData = await res.body.text();
         const jsonData = (() => {

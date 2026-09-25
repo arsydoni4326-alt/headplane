@@ -1,5 +1,5 @@
-import type { MetaFunction } from "react-router";
 import React from "react";
+import type { MetaFunction } from "react-router";
 import {
   Links,
   Meta,
@@ -14,11 +14,8 @@ import ToastProvider from "~/utils/toast-provider";
 
 import type { Route } from "./+types/root";
 import { ErrorBanner } from "./components/error-banner";
-import { headscaleContext, appConfigContext } from "./server/context";
-import {
-  UpdateCheckModal,
-  UpdateCheckProvider,
-} from "./update-check";
+import { headscaleContext } from "./server/context";
+import { UpdateCheckModal, UpdateCheckProvider } from "./update-check";
 import { useUpdateCheckContext } from "./update-check/UpdateCheckProvider";
 
 import "@fontsource-variable/inter/opsz.css";
@@ -37,12 +34,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const colorScheme = await getColorScheme(request);
 
   // Expose version info for the update-check feature
-  const config = context.get(appConfigContext);
   const headscale = context.get(headscaleContext);
   const headplaneVersion = __VERSION__;
   const headplaneCommit = __COMMIT_HASH__;
   const headscaleVersion = headscale.version.raw;
-  const headscaleBaseUrl = config.headscale.public_url ?? config.headscale.url;
 
   return {
     colorScheme,
@@ -50,7 +45,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       headplaneCommit,
       headplaneVersion,
       headscaleVersion,
-      headscaleBaseUrl,
     },
   };
 }
@@ -62,7 +56,6 @@ function VersionCheckRunner({
     headplaneCommit: string;
     headplaneVersion: string;
     headscaleVersion: string;
-    headscaleBaseUrl: string;
   };
 }) {
   const ctx = useUpdateCheckContext();

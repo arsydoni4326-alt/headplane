@@ -13,8 +13,6 @@ export interface VersionInfo {
   headplaneCommit: string;
   headplaneVersion: string;
   headscaleVersion: string;
-  /** Base URL of the headscale server (e.g. "https://headscale.example.com") */
-  headscaleBaseUrl: string;
 }
 
 export interface UpdateCheckState {
