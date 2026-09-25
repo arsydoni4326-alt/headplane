@@ -1,4 +1,5 @@
 import type { MetaFunction } from "react-router";
+import React from "react";
 import {
   Links,
   Meta,
@@ -13,6 +14,12 @@ import ToastProvider from "~/utils/toast-provider";
 
 import type { Route } from "./+types/root";
 import { ErrorBanner } from "./components/error-banner";
+import { headscaleContext, appConfigContext } from "./server/context";
+import {
+  UpdateCheckModal,
+  UpdateCheckProvider,
+} from "./update-check";
+import { useUpdateCheckContext } from "./update-check/UpdateCheckProvider";
 
 import "@fontsource-variable/inter/opsz.css";
 import "./tailwind.css";
@@ -26,9 +33,48 @@ export const meta: MetaFunction = () => [
   },
 ];
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, context }: Route.LoaderArgs) {
   const colorScheme = await getColorScheme(request);
-  return { colorScheme };
+
+  // Expose version info for the update-check feature
+  const config = context.get(appConfigContext);
+  const headscale = context.get(headscaleContext);
+  const headplaneVersion = __VERSION__;
+  const headplaneCommit = __COMMIT_HASH__;
+  const headscaleVersion = headscale.version.raw;
+  const headscaleBaseUrl = config.headscale.public_url ?? config.headscale.url;
+
+  return {
+    colorScheme,
+    versionInfo: {
+      headplaneCommit,
+      headplaneVersion,
+      headscaleVersion,
+      headscaleBaseUrl,
+    },
+  };
+}
+
+function VersionCheckRunner({
+  versionInfo,
+}: {
+  versionInfo?: {
+    headplaneCommit: string;
+    headplaneVersion: string;
+    headscaleVersion: string;
+    headscaleBaseUrl: string;
+  };
+}) {
+  const ctx = useUpdateCheckContext();
+
+  React.useEffect(() => {
+    if (versionInfo) {
+      ctx.setVersionInfo(versionInfo);
+      ctx.checkNow("auto");
+    }
+  }, [versionInfo]);
+
+  return <UpdateCheckModal />;
 }
 
 export function Layout({ children }: { readonly children: React.ReactNode }) {
@@ -39,30 +85,33 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
   // are not a part of the normal React tree.
   return (
     <LiveDataProvider>
-      <html
-        lang="en"
-        className={
-          loaderData?.colorScheme === "dark"
-            ? "dark"
-            : loaderData?.colorScheme === "light"
-              ? "light"
-              : ""
-        }
-      >
-        <head>
-          <meta charSet="utf-8" />
-          <meta content="width=device-width, initial-scale=1" name="viewport" />
-          <Meta />
-          <Links />
-          <link href={`${__PREFIX__}/favicon.ico`} rel="icon" />
-        </head>
-        <body className="w-full overflow-x-hidden overscroll-none dark:bg-mist-900 dark:text-mist-50">
-          {children}
-          <ToastProvider />
-          <ScrollRestoration />
-          <Scripts />
-        </body>
-      </html>
+      <UpdateCheckProvider>
+        <VersionCheckRunner versionInfo={loaderData?.versionInfo} />
+        <html
+          lang="en"
+          className={
+            loaderData?.colorScheme === "dark"
+              ? "dark"
+              : loaderData?.colorScheme === "light"
+                ? "light"
+                : ""
+          }
+        >
+          <head>
+            <meta charSet="utf-8" />
+            <meta content="width=device-width, initial-scale=1" name="viewport" />
+            <Meta />
+            <Links />
+            <link href={`${__PREFIX__}/favicon.ico`} rel="icon" />
+          </head>
+          <body className="w-full overflow-x-hidden overscroll-none dark:bg-mist-900 dark:text-mist-50">
+            {children}
+            <ToastProvider />
+            <ScrollRestoration />
+            <Scripts />
+          </body>
+        </html>
+      </UpdateCheckProvider>
     </LiveDataProvider>
   );
 }

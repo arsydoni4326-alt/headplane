@@ -6,6 +6,7 @@ import {
   Lock,
   Monitor,
   Moon,
+  RefreshCw,
   Server,
   Settings,
   Sun,
@@ -20,6 +21,9 @@ import logoDark from "~/logo/dark.svg";
 import logoLight from "~/logo/light.svg";
 import cn from "~/utils/cn";
 import type { ColorScheme } from "~/utils/color-scheme";
+import {
+  useUpdateCheckContext,
+} from "~/update-check";
 
 export interface HeaderProps {
   user: {
@@ -183,6 +187,8 @@ export default function Header({ user, access, configAvailable }: HeaderProps) {
                 </MenuItem>
               ))}
               <MenuSeparator />
+              <UpdateCheckMenuItem />
+              <MenuSeparator />
               <MenuItem
                 variant="danger"
                 onClick={() => submit({}, { action: "/logout", method: "POST" })}
@@ -226,5 +232,39 @@ export default function Header({ user, access, configAvailable }: HeaderProps) {
         </div>
       )}
     </header>
+  );
+}
+
+/**
+ * Menu item for checking updates, placed in the user menu.
+ * Must be used within an <UpdateCheckProvider>.
+ */
+function UpdateCheckMenuItem() {
+  const ctx = useUpdateCheckContext();
+  const count =
+    (ctx.headplaneUpdate !== null ? 1 : 0) +
+    (ctx.headscaleUpdate !== null ? 1 : 0);
+
+  return (
+    <MenuItem
+      onClick={() => ctx.checkNow("manual")}
+      disabled={ctx.isChecking}
+    >
+      <div className="flex w-full items-center gap-2">
+        <RefreshCw
+          className={`size-4 ${ctx.isChecking ? "animate-spin" : ""}`}
+        />
+        <span className="flex-1">
+          {ctx.isChecking
+            ? "Checking for updates..."
+            : "Check for Updates"}
+        </span>
+        {count > 0 && (
+          <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-500 text-xs font-semibold text-white">
+            {count}
+          </span>
+        )}
+      </div>
+    </MenuItem>
   );
 }

@@ -37,6 +37,18 @@ if (process.env.HEADPLANE_VERSION) {
   }
 }
 
+// Derive commit hash: HEADPLANE_COMMIT env > git rev-parse > unknown
+let COMMIT_HASH: string;
+if (process.env.HEADPLANE_COMMIT) {
+  COMMIT_HASH = process.env.HEADPLANE_COMMIT;
+} else {
+  try {
+    COMMIT_HASH = execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+  } catch {
+    COMMIT_HASH = "unknown";
+  }
+}
+
 if (!VERSION) {
   throw new Error("Unable to determine version");
 }
@@ -108,6 +120,7 @@ export default defineConfig(({ command }) => {
     define: {
       __VERSION__: JSON.stringify(isNext ? `${VERSION}-next` : VERSION),
       __PREFIX__: JSON.stringify(PREFIX),
+      __COMMIT_HASH__: JSON.stringify(COMMIT_HASH),
     },
   };
 });
