@@ -44,6 +44,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const body = {
     status: healthy ? "healthy" : "unhealthy",
     headplane_version: __VERSION__,
+    headplane_commit: __COMMIT_HASH__,
+    headplane_build_time: __BUILD_TIME__,
     headscale_canonical_version: healthy ? headscale.version.raw : "unknown",
     internal_versions: {
       node: versions.node,

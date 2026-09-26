@@ -1,3 +1,9 @@
+# 0.7.9-arsydoni4326-alt (September 27, 2026)
+
+- Docker builds now embed the build time (`HEADPLANE_BUILD_TIME` / `BUILD_DATE`
+  build arg) alongside the version and commit hash. The `/admin/api/info`
+  endpoint now reports `headplane_commit` and `headplane_build_time`.
+
 # 0.7.6-arsydoni4326-alt (September 25, 2026)
 
 - Headscale update checks are now proxied through Headplane's backend at
@@ -12,8 +18,6 @@
   server directly; the browser no longer needs to know the Headscale URL.
 
 ---
-
-# Next
 
 # 0.7.8-arsydoni4326-alt (September 26, 2026)
 

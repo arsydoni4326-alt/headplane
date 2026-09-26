@@ -37,6 +37,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const headscale = context.get(headscaleContext);
   const headplaneVersion = __VERSION__;
   const headplaneCommit = __COMMIT_HASH__;
+  const headplaneBuildTime = __BUILD_TIME__;
   const headscaleVersion = headscale.version.raw;
 
   return {
@@ -44,6 +45,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     versionInfo: {
       headplaneCommit,
       headplaneVersion,
+      headplaneBuildTime,
       headscaleVersion,
     },
   };
@@ -55,6 +57,7 @@ function VersionCheckRunner({
   versionInfo?: {
     headplaneCommit: string;
     headplaneVersion: string;
+    headplaneBuildTime: string;
     headscaleVersion: string;
   };
 }) {

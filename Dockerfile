@@ -14,7 +14,7 @@ ARG TARGETARCH
 ARG IMAGE_TAG
 ARG APP_VERSION=v0.0.0
 ARG APP_COMMIT=unknown
-ARG BUILD_DATE=2025-09-09
+ARG BUILD_DATE=
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 IMAGE_TAG=$APP_VERSION \
 	./build.sh --wasm --agent --fake-shell --healthcheck \
 		--wasm-output /bin/hp_ssh.wasm \
@@ -34,7 +34,7 @@ FROM --platform=$BUILDPLATFORM node:24-slim AS js-base
 WORKDIR /run
 ARG APP_VERSION=v0.0.0
 ARG APP_COMMIT=unknown
-ARG BUILD_DATE=2025-09-09
+ARG BUILD_DATE=
 
 RUN corepack enable
 COPY patches ./patches
@@ -45,7 +45,9 @@ COPY --from=go-base /bin/wasm_exec.js /run/public/wasm_exec.js
 RUN ./build.sh --app --app-install-only
 
 COPY . .
-RUN HEADPLANE_VERSION=$APP_VERSION HEADPLANE_COMMIT=$APP_COMMIT ./build.sh --app
+RUN HEADPLANE_VERSION=$APP_VERSION HEADPLANE_COMMIT=$APP_COMMIT \
+	HEADPLANE_BUILD_TIME=${BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)} \
+	./build.sh --app
 
 FROM gcr.io/distroless/nodejs24-debian13:latest AS final
 COPY --from=js-base /run/build /app/build

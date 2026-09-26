@@ -14,6 +14,7 @@ export interface UpdateCheckResult {
 export interface VersionInfo {
   headplaneCommit: string;
   headplaneVersion: string;
+  headplaneBuildTime: string;
   headscaleVersion: string;
 }
 
