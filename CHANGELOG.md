@@ -1,3 +1,5 @@
+# Next
+
 # 0.7.9-arsydoni4326-alt (September 27, 2026)
 
 - Docker builds now embed the build time (`HEADPLANE_BUILD_TIME` / `BUILD_DATE`
