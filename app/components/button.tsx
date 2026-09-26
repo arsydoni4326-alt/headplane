@@ -13,7 +13,7 @@ export default function Button({ variant = "light", className, ...props }: Butto
       {...props}
       className={cn(
         "inline-flex w-fit items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm",
-        "transition-colors duration-100",
+        "transition-colors duration-100 active:scale-[0.98]",
         "focus:outline-hidden focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-1",
         "dark:focus:ring-indigo-400/40 dark:focus:ring-offset-mist-900",
         props.disabled && "pointer-events-none opacity-50",

@@ -13,6 +13,22 @@
 
 ---
 
+# Next
+
+# 0.7.8-arsydoni4326-alt (September 26, 2026)
+
+## Changes
+
+- Phase 3: UI/UX polish — visual documentation, accessibility, interaction
+  feedback, and responsive refinements.
+- Added `role="img"` to status circle SVG for better screen reader support.
+- Increased table-list item padding for improved touch targets and visual
+  breathing room.
+- Simplified add button icon sizing in token list editor.
+- Added `active:scale-[0.98]` press-state feedback on buttons.
+- Added entrance animation (opacity + scale) to dialog panels.
+- Added transition-opacity to mobile navigation tabs.
+
 # 0.7.7-arsydoni4326-alt (September 26, 2026)
 
 ## Changes

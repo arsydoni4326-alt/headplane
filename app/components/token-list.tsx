@@ -112,12 +112,12 @@ export default function TokenList({
           value={draft}
         />
         <Button
-          className={cn("rounded-md p-1", draftIsInvalid && "cursor-not-allowed opacity-50")}
+          className={cn("rounded-md", draftIsInvalid && "cursor-not-allowed opacity-50")}
           disabled={isDisabled || draftIsInvalid}
           onClick={() => add(draft)}
           type="button"
         >
-          <Plus className="p-1" size={30} />
+          <Plus className="size-4" />
         </Button>
       </div>
       {available.length > 0 ? (

@@ -201,7 +201,7 @@ export default function Header({ user, access, configAvailable }: HeaderProps) {
       </div>
       {showTabs && (
         <div className="block overflow-x-auto p-2 md:hidden">
-          <nav className="flex items-center gap-x-2 text-sm font-medium">
+          <nav className="flex items-center gap-x-2 text-sm font-medium transition-opacity duration-100">
             {tabs.map((tab) => {
               if (!access[tab.key]) return null;
               if ((tab.key === "dns" || tab.key === "settings") && !configAvailable) return null;
