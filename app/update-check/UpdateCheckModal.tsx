@@ -3,8 +3,15 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 import Button from "~/components/button";
 import Link from "~/components/link";
 import Dialog, { DialogPanel } from "~/components/dialog";
-import type { UpdateCheckResult, UpdateCheckState } from "./types";
-import { hasUpdates, useUpdateCheckContext } from "./UpdateCheckProvider";
+import type { UpdateCheckResult } from "./types";
+import {
+  dismissForSession,
+  hasUpdates,
+  isDismissedForSession,
+  isRemindLaterActive,
+  remindLater,
+  useUpdateCheckContext,
+} from "./UpdateCheckProvider";
 
 export default function UpdateCheckModal() {
   const ctx = useUpdateCheckContext();
@@ -12,7 +19,9 @@ export default function UpdateCheckModal() {
   const isOpen =
     !ctx.isChecking &&
     hasUpdates(ctx) &&
-    ctx.lastTrigger === "auto";
+    ctx.lastTrigger === "auto" &&
+    !isDismissedForSession() &&
+    !isRemindLaterActive();
 
   return (
     <Dialog isOpen={isOpen} onOpenChange={(open) => {
@@ -40,6 +49,27 @@ export default function UpdateCheckModal() {
             Checked automatically on page load. You can also check manually
             from the user menu at any time.
           </p>
+
+          <div className="flex gap-2 pt-1">
+            <Button
+              variant="light"
+              onClick={() => {
+                dismissForSession();
+                ctx.clearResults();
+              }}
+            >
+              Dismiss for this session
+            </Button>
+            <Button
+              variant="light"
+              onClick={() => {
+                remindLater();
+                ctx.clearResults();
+              }}
+            >
+              Remind me later
+            </Button>
+          </div>
         </div>
       </DialogPanel>
     </Dialog>
@@ -47,8 +77,6 @@ export default function UpdateCheckModal() {
 }
 
 function UpdateCard({ result }: { result: UpdateCheckResult }) {
-  const ctx = useUpdateCheckContext();
-
   return (
     <div className="rounded-lg border border-mist-200 bg-mist-50 p-3 dark:border-mist-700 dark:bg-mist-800/50">
       <div className="flex items-center justify-between">
@@ -72,16 +100,25 @@ function UpdateCard({ result }: { result: UpdateCheckResult }) {
           </span>
         </Link>
         <span className="text-xs text-mist-400 dark:text-mist-500">·</span>
-        <Link
-          external
-          styled
-          to={`${result.repoUrl.replace(/\.git$/, "")}/releases`}
-        >
-          <span className="flex items-center gap-1">
-            <ExternalLink className="size-3" />
-            Releases
-          </span>
-        </Link>
+        {result.releaseUrl ? (
+          <Link external styled to={result.releaseUrl}>
+            <span className="flex items-center gap-1">
+              <ExternalLink className="size-3" />
+              Release Notes
+            </span>
+          </Link>
+        ) : (
+          <Link
+            external
+            styled
+            to={`${result.repoUrl.replace(/\.git$/, "")}/releases`}
+          >
+            <span className="flex items-center gap-1">
+              <ExternalLink className="size-3" />
+              Releases
+            </span>
+          </Link>
+        )}
       </div>
     </div>
   );

@@ -20,6 +20,84 @@ const UpdateCheckContext = createContext<UpdateCheckContextValue | null>(null);
 const HEADPLANE_REPO = "https://github.com/arsydoni4326-alt/headplane.git";
 const HEADSCALE_REPO = "https://github.com/arsydoni4326-alt/headscale.git";
 
+// --- sessionStorage caching ---
+
+const CACHE_KEY = "headplane-update-check";
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+interface CachedData {
+  timestamp: number;
+  headplaneUpdate: UpdateCheckResult | null;
+  headscaleUpdate: UpdateCheckResult | null;
+}
+
+function readCache(): CachedData | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as CachedData;
+    if (Date.now() - data.timestamp > CACHE_TTL_MS) {
+      sessionStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data: Omit<CachedData, "timestamp">): void {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, timestamp: Date.now() }));
+  } catch {
+    // sessionStorage full or unavailable — silently ignore
+  }
+}
+
+// --- Dismiss/remind sessionStorage keys ---
+
+const DISMISS_SESSION_KEY = "headplane-update-dismiss-session";
+const REMIND_LATER_KEY = "headplane-update-remind-later";
+const REMIND_LATER_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export function isDismissedForSession(): boolean {
+  try {
+    return sessionStorage.getItem(DISMISS_SESSION_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function dismissForSession(): void {
+  try {
+    sessionStorage.setItem(DISMISS_SESSION_KEY, "true");
+  } catch {
+    // ignore
+  }
+}
+
+export function isRemindLaterActive(): boolean {
+  try {
+    const raw = sessionStorage.getItem(REMIND_LATER_KEY);
+    if (!raw) return false;
+    const timestamp = Number(raw);
+    if (Number.isNaN(timestamp)) return false;
+    return Date.now() - timestamp < REMIND_LATER_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+export function remindLater(): void {
+  try {
+    sessionStorage.setItem(REMIND_LATER_KEY, String(Date.now()));
+  } catch {
+    // ignore
+  }
+}
+
+// --- GitHub API helpers ---
+
 async function performCheck(
   headplaneCommit: string,
   headscaleVersion: string,
@@ -61,7 +139,7 @@ async function fetchHeadscaleUpdate(): Promise<UpdateCheckResult | null> {
     const data = (await response.json()) as {
       current?: { commit?: string };
       updateAvailable?: boolean;
-      remote?: { commit?: string; url?: string };
+      remote?: { commit?: string; version?: string; url?: string };
       error?: string;
     };
 
@@ -80,11 +158,20 @@ async function fetchHeadscaleUpdate(): Promise<UpdateCheckResult | null> {
     const remoteCommit = data.remote?.commit ?? "unknown";
     const repoUrl = data.remote?.url ? `${data.remote.url}.git` : HEADSCALE_REPO;
 
+    // If the remote has a version field (release comparison), construct a
+    // release notes URL. Otherwise fall back to the generic releases page.
+    let releaseUrl: string | undefined;
+    if (data.remote?.version) {
+      const base = repoUrl.replace(/\.git$/, "");
+      releaseUrl = `${base}/releases/tag/v${data.remote.version}`;
+    }
+
     return {
       currentCommit,
       remoteCommit,
       repoUrl,
       projectName: "Headscale",
+      releaseUrl,
     };
   } catch {
     return null;
@@ -179,11 +266,31 @@ export function UpdateCheckProvider({ children }: { children: React.ReactNode })
       return;
     }
 
+    // Auto-checks use cached results if available
+    if (trigger === "auto") {
+      const cached = readCache();
+      if (cached) {
+        setState({
+          isChecking: false,
+          headplaneUpdate: cached.headplaneUpdate,
+          headscaleUpdate: cached.headscaleUpdate,
+          error: null,
+        });
+        setLastTrigger(trigger);
+        return;
+      }
+    }
+
     setState((prev) => ({ ...prev, isChecking: true, error: null }));
     setLastTrigger(trigger);
 
     try {
       const results = await performCheck(info.headplaneCommit, info.headscaleVersion);
+
+      // Cache successful results (only for auto-triggered checks)
+      if (trigger === "auto") {
+        writeCache(results);
+      }
 
       setState({
         isChecking: false,
