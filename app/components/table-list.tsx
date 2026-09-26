@@ -18,7 +18,7 @@ function Item(props: HTMLProps<HTMLDivElement>) {
     <div
       {...props}
       className={cn(
-        "flex items-center justify-between p-2 last:border-b-0",
+        "flex items-center justify-between p-3 last:border-b-0",
         "border-b border-mist-200 dark:border-mist-800",
         props.className,
       )}

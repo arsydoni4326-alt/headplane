@@ -64,6 +64,8 @@ function Panel(props: DialogPanelProps) {
         "bg-white dark:bg-mist-900",
         "border border-mist-200 dark:border-mist-800",
         "shadow-overlay",
+        "transition-all duration-150 ease-out",
+        "data-[starting-style]:opacity-0 data-[starting-style]:scale-95",
       )}
     >
       <Form
