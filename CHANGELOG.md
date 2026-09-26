@@ -15,6 +15,10 @@
 
 # Next
 
+- Docker builds now embed the build time (`HEADPLANE_BUILD_TIME` / `BUILD_DATE`
+  build arg) alongside the version and commit hash. The `/admin/api/info`
+  endpoint now reports `headplane_commit` and `headplane_build_time`.
+
 # 0.7.8-arsydoni4326-alt (September 26, 2026)
 
 ## Changes

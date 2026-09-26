@@ -67,5 +67,7 @@ export default defineConfig({
   define: {
     __VERSION__: JSON.stringify(isNext ? `${version}-next` : version),
     __PREFIX__: JSON.stringify(prefix),
+    __COMMIT_HASH__: JSON.stringify("test"),
+    __BUILD_TIME__: JSON.stringify("test"),
   },
 });

@@ -49,6 +49,14 @@ if (process.env.HEADPLANE_COMMIT) {
   }
 }
 
+// Derive build time: HEADPLANE_BUILD_TIME env > current time
+let BUILD_TIME: string;
+if (process.env.HEADPLANE_BUILD_TIME) {
+  BUILD_TIME = process.env.HEADPLANE_BUILD_TIME;
+} else {
+  BUILD_TIME = new Date().toISOString();
+}
+
 if (!VERSION) {
   throw new Error("Unable to determine version");
 }
@@ -121,6 +129,7 @@ export default defineConfig(({ command }) => {
       __VERSION__: JSON.stringify(isNext ? `${VERSION}-next` : VERSION),
       __PREFIX__: JSON.stringify(PREFIX),
       __COMMIT_HASH__: JSON.stringify(COMMIT_HASH),
+      __BUILD_TIME__: JSON.stringify(BUILD_TIME),
     },
   };
 });

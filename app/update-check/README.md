@@ -26,7 +26,8 @@ the latest commit on the remote `main` branch.
 ## How It Works
 
 1. At build time, the Docker pipeline embeds the short git commit hash as
-   `__COMMIT_HASH__` (via `HEADPLANE_COMMIT` env var in Vite's `define`).
+   `__COMMIT_HASH__` (via `HEADPLANE_COMMIT` env var in Vite's `define`) and
+   the build time as `__BUILD_TIME__` (via `HEADPLANE_BUILD_TIME`).
 2. On page load, the `UpdateCheckProvider` component fetches the latest commit
    hash from the remote `main` branch of both repositories via the GitHub API.
 3. If the hashes differ, an `UpdateCheckModal` is shown.
