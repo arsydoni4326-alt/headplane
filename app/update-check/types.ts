@@ -7,6 +7,8 @@ export interface UpdateCheckResult {
   repoUrl: string;
   /** Human-readable project name */
   projectName: string;
+  /** Optional URL to the specific release notes page (for release comparisons) */
+  releaseUrl?: string;
 }
 
 export interface VersionInfo {

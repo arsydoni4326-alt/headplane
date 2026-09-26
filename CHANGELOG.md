@@ -15,6 +15,17 @@
 
 # Next
 
+## Changes
+
+- Added sessionStorage caching (15-min TTL) for update-check results so the
+  modal does not re-fetch on every page load; manual checks bypass the cache.
+- Added "Dismiss for this session" and "Remind me later (24h)" buttons to the
+  update modal, using sessionStorage.
+- Added release notes link when a tag-based update is detected (from the
+  server's release version comparison).
+- Added `releaseUrl` field to the update-check result type for direct release
+  notes navigation.
+
 # 0.7.5-arsydoni4326-alt (September 25, 2026)
 
 - Added an indestructible "Check for Updates" feature in a self-contained
