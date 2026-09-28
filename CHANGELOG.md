@@ -1,4 +1,11 @@
-# Next
+# 0.8.3-arsydoni4326-alt (September 29, 2026)
+
+## Fixes
+
+- Fixed the integration test suite (`pnpm run test:integration`) that failed in
+  CI after the audit-log feature added a required audit context to machine
+  actions. Node registration tests now provide the audit context and a valid
+  principal, and the Vite test config no longer relies on `__dirname`.
 
 # 0.8.2-arsydoni4326-alt (September 28, 2026)
 
