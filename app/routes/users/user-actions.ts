@@ -1,6 +1,12 @@
 import { data } from "react-router";
 
-import { authContext, headscaleLiveStoreContext, requestApiContext } from "~/server/context";
+import { actorFromPrincipal } from "~/server/audit";
+import {
+  auditContext,
+  authContext,
+  headscaleLiveStoreContext,
+  requestApiContext,
+} from "~/server/context";
 import { isDataWithApiError } from "~/server/headscale/api/error-client";
 import { usersResource } from "~/server/headscale/live-store";
 import { isUserPrincipal } from "~/server/web/auth";
@@ -12,6 +18,7 @@ import { validateUsername } from "~/utils/user";
 import type { Route } from "./+types/overview";
 
 export async function userAction({ request, context }: Route.ActionArgs) {
+  const audit = context.get(auditContext);
   const auth = context.get(authContext);
   const getRequestApi = context.get(requestApiContext);
   const headscaleLiveStore = context.get(headscaleLiveStoreContext);
@@ -52,6 +59,14 @@ export async function userAction({ request, context }: Route.ActionArgs) {
 
       await api.users.create({ name, email, displayName });
       await headscaleLiveStore.refresh(usersResource, api);
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "user.create",
+        resourceType: "user",
+        resourceId: null,
+        details: { name, displayName, email },
+      });
       return { message: "User created successfully" };
     }
     case "delete_user": {
@@ -64,6 +79,14 @@ export async function userAction({ request, context }: Route.ActionArgs) {
 
       await api.users.delete(headscaleUserId);
       await headscaleLiveStore.refresh(usersResource, api);
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "user.delete",
+        resourceType: "user",
+        resourceId: headscaleUserId,
+        details: {},
+      });
       return { message: "User deleted successfully" };
     }
     case "rename_user": {
@@ -93,6 +116,14 @@ export async function userAction({ request, context }: Route.ActionArgs) {
 
       await api.users.rename(headscaleUserId, newName);
       await headscaleLiveStore.refresh(usersResource, api);
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "user.rename",
+        resourceType: "user",
+        resourceId: headscaleUserId,
+        details: { from: user.name, to: newName },
+      });
       return { message: "User renamed successfully" };
     }
     case "reassign_user": {
@@ -109,6 +140,14 @@ export async function userAction({ request, context }: Route.ActionArgs) {
         throw data("Failed to reassign user role.", { status: 500 });
       }
 
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "user.reassign",
+        resourceType: "user",
+        resourceId: headplaneUserId,
+        details: { role: newRole },
+      });
       return { message: "User reassigned successfully" };
     }
     case "transfer_ownership": {
@@ -142,6 +181,14 @@ export async function userAction({ request, context }: Route.ActionArgs) {
         throw data("That Headscale user is already linked to another account.", { status: 409 });
       }
 
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "user.link",
+        resourceType: "user",
+        resourceId: headplaneUserId,
+        details: { headscaleUserId },
+      });
       return { message: "Headscale user linked successfully" };
     }
     case "update_user_groups": {
@@ -190,6 +237,14 @@ export async function userAction({ request, context }: Route.ActionArgs) {
         return data({ error: `Could not update the ACL policy: ${message}` }, 500);
       }
 
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "acl.update",
+        resourceType: "acl",
+        resourceId: null,
+        details: { action: "update_user_groups", userName, groups },
+      });
       return { message: "Groups updated successfully" };
     }
     default:

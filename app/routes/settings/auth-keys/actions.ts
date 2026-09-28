@@ -1,6 +1,7 @@
 import { data } from "react-router";
 
-import { authContext, requestApiContext } from "~/server/context";
+import { actorFromPrincipal } from "~/server/audit";
+import { auditContext, authContext, requestApiContext } from "~/server/context";
 import { isUserPrincipal } from "~/server/web/auth";
 import { getOidcSubject } from "~/server/web/headscale-identity";
 import { Capabilities } from "~/server/web/roles";
@@ -9,6 +10,7 @@ import type { PreAuthKey } from "~/types";
 import type { Route } from "./+types/overview";
 
 export async function authKeysAction({ request, context }: Route.ActionArgs) {
+  const audit = context.get(auditContext);
   const auth = context.get(authContext);
   const getRequestApi = context.get(requestApiContext);
 
@@ -111,6 +113,15 @@ export async function authKeysAction({ request, context }: Route.ActionArgs) {
         aclTags: aclTags.length > 0 ? aclTags : null,
       });
 
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "authkey.create",
+        resourceType: "authkey",
+        resourceId: key.id,
+        details: { user, aclTags, reusable: reusable === "on", ephemeral: ephemeral === "on" },
+      });
+
       return data({ success: true as const, key: key.key });
     }
 
@@ -140,6 +151,14 @@ export async function authKeysAction({ request, context }: Route.ActionArgs) {
         key,
         user: { id: user },
       } as unknown as PreAuthKey);
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "authkey.expire",
+        resourceType: "authkey",
+        resourceId: keyId,
+        details: { user },
+      });
       return data("Pre-auth key expired");
     }
 

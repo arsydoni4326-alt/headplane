@@ -1,6 +1,7 @@
 import { data } from "react-router";
 
-import { authContext, requestApiContext } from "~/server/context";
+import { actorFromPrincipal } from "~/server/audit";
+import { auditContext, authContext, requestApiContext } from "~/server/context";
 import { isDataWithApiError } from "~/server/headscale/api/error-client";
 import { Capabilities } from "~/server/web/roles";
 
@@ -10,6 +11,7 @@ import type { Route } from "./+types/overview";
 // If it isn't, it'll gracefully error anyways, since this means some
 // fishy client manipulation is happening.
 export async function aclAction({ request, context }: Route.ActionArgs) {
+  const audit = context.get(auditContext);
   const auth = context.get(authContext);
   const getRequestApi = context.get(requestApiContext);
 
@@ -33,6 +35,14 @@ export async function aclAction({ request, context }: Route.ActionArgs) {
   const { api } = await getRequestApi(request);
   try {
     const { policy, updatedAt } = await api.policy.set(policyData);
+    const actor = actorFromPrincipal(principal);
+    await audit.record({
+      ...actor,
+      action: "acl.update",
+      resourceType: "acl",
+      resourceId: null,
+      details: { policyLength: policy.length },
+    });
     return data({
       success: true,
       error: undefined,

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Info, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
 import Code from "~/components/code";
@@ -20,14 +20,17 @@ import { nodesResource, usersResource } from "~/server/headscale/live-store";
 import { isUserPrincipal } from "~/server/web/auth";
 import { Capabilities } from "~/server/web/roles";
 import cn from "~/utils/cn";
+import { formatOS } from "~/utils/host-info";
 import {
   extractTagOwnerTags,
+  isNoExpiry,
   mapNodes,
   sortAssignableTags,
   type PopulatedNode,
 } from "~/utils/node-info";
 
 import type { Route } from "./+types/overview";
+import BulkActions from "./components/bulk-actions";
 import { MachineFilters } from "./components/machine-filters";
 import MachineRow from "./components/machine-row";
 import NewMachine from "./dialogs/new";
@@ -117,14 +120,28 @@ const ROUTE_MATCH: Record<string, (n: PopulatedNode) => boolean> = {
     n.customRouting.subnetWaitingRoutes.length > 0,
 };
 
+const EXPIRY_MATCH: Record<string, (n: PopulatedNode) => boolean> = {
+  expired: (n) => n.expired,
+  expiring: (n) => !n.expired && !isNoExpiry(n.expiry),
+  never: (n) => isNoExpiry(n.expiry),
+};
+
 export default function Page({ loaderData }: Route.ComponentProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const searchQuery = searchParams.get("q") ?? "";
-  const { filterUser, filterTag, filterStatus, filterRoute, hasActiveFilters } =
-    useMachineFilterParams();
+  const {
+    filterUser,
+    filterTag,
+    filterStatus,
+    filterRoute,
+    filterOS,
+    filterExpiry,
+    hasActiveFilters,
+  } = useMachineFilterParams();
 
   const setSearchQuery = (value: string) => {
     setSearchParams((prev) => {
@@ -156,7 +173,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
           (filterUser === "tag-owned" ? !node.user : node.user?.name === filterUser)) &&
         (filterTag === null || (node.tags?.includes(filterTag) ?? false)) &&
         (filterStatus === null || STATUS_MATCH[filterStatus](node)) &&
-        (filterRoute === null || ROUTE_MATCH[filterRoute](node)),
+        (filterRoute === null || ROUTE_MATCH[filterRoute](node)) &&
+        (filterOS === null || formatOS(node.hostInfo?.OS) === filterOS) &&
+        (filterExpiry === null || EXPIRY_MATCH[filterExpiry](node)),
     );
 
     nodes = [...nodes].toSorted((a, b) => {
@@ -225,6 +244,8 @@ export default function Page({ loaderData }: Route.ComponentProps) {
     filterTag,
     filterStatus,
     filterRoute,
+    filterOS,
+    filterExpiry,
     sortField,
     sortDirection,
   ]);
@@ -237,6 +258,46 @@ export default function Page({ loaderData }: Route.ComponentProps) {
       setSortDirection("asc");
     }
   };
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const visibleIds = filteredAndSortedNodes.map((n) => n.id);
+      const allSelected = visibleIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        for (const id of visibleIds) {
+          next.delete(id);
+        }
+      } else {
+        for (const id of visibleIds) {
+          next.add(id);
+        }
+      }
+      return next;
+    });
+  }, [filteredAndSortedNodes]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Drop the selection whenever the visible set changes so a bulk action can
+  // never silently apply to machines the user can no longer see.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchQuery, filterUser, filterTag, filterStatus, filterRoute, filterOS, filterExpiry]);
 
   return (
     <>
@@ -291,10 +352,29 @@ export default function Page({ loaderData }: Route.ComponentProps) {
             : `${loaderData.populatedNodes.length} machines`}
         </span>
       </div>
+      <BulkActions
+        existingTags={loaderData.existingTags}
+        onClear={clearSelection}
+        policyTags={loaderData.policyTags}
+        selectedIds={Array.from(selectedIds)}
+        writable={loaderData.writable}
+      />
       <div className="overflow-x-auto">
         <table className="w-full min-w-160 table-auto rounded-lg">
           <thead className="text-mist-600 dark:text-mist-300">
             <tr className="px-0.5 text-left">
+              <th className="w-10 pb-2">
+                <input
+                  aria-label="Select all machines"
+                  checked={
+                    filteredAndSortedNodes.length > 0 &&
+                    filteredAndSortedNodes.every((n) => selectedIds.has(n.id))
+                  }
+                  className="h-4 w-4 cursor-pointer rounded border-mist-300 text-indigo-600 focus:ring-indigo-500 dark:border-mist-600 dark:bg-mist-800"
+                  onChange={toggleSelectAll}
+                  type="checkbox"
+                />
+              </th>
               <th
                 aria-sort={
                   sortField === "name"
@@ -443,7 +523,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
               <tr>
                 <td
                   className="py-8 text-center text-mist-500"
-                  colSpan={loaderData.agent !== undefined ? 6 : 5}
+                  colSpan={loaderData.agent !== undefined ? 7 : 6}
                 >
                   No machines match the current filters
                 </td>
@@ -452,7 +532,6 @@ export default function Page({ loaderData }: Route.ComponentProps) {
               filteredAndSortedNodes.map((node) => (
                 <MachineRow
                   existingTags={loaderData.existingTags}
-                  policyTags={loaderData.policyTags}
                   isAgent={
                     loaderData.agent !== undefined
                       ? node.nodeKey === loaderData.agent.nodeKey
@@ -463,12 +542,15 @@ export default function Page({ loaderData }: Route.ComponentProps) {
                       ? false // If the user has write permissions, they can edit all machines
                       : node.user?.id !== loaderData.headscaleUserId
                   }
+                  isSelected={selectedIds.has(node.id)}
                   key={node.id}
                   magic={loaderData.magic}
                   node={node}
-                  users={loaderData.users}
+                  onToggleSelect={toggleSelect}
+                  policyTags={loaderData.policyTags}
                   supportsNodeOwnerChange={loaderData.supportsNodeOwnerChange}
                   supportsDisablingKeyExpiry={loaderData.supportsDisablingKeyExpiry}
+                  users={loaderData.users}
                 />
               ))
             )}

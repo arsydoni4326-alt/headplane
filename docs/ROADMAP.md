@@ -41,8 +41,6 @@ Every roadmap item must support these project tenets:
   behavior for groups and roles, and per-provider troubleshooting docs.
 - **DNS management improvements** — better provisioning of DNS records into
   Headscale, including `extra_records_path` handling.
-- **Headscale version compatibility tracking** — proactive detection of
-  unsupported Headscale features based on the server's reported version.
 
 ## Deferred
 

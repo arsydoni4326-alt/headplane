@@ -43,3 +43,19 @@ export const authSessions = sqliteTable("auth_sessions", {
 
 export type AuthSessionRecord = typeof authSessions.$inferSelect;
 export type AuthSessionInsert = typeof authSessions.$inferInsert;
+
+export const auditLog = sqliteTable("audit_log", {
+  id: text("id").primaryKey(),
+  actor_id: text("actor_id"),
+  actor_name: text("actor_name").notNull(),
+  action: text("action").notNull(),
+  resource_type: text("resource_type").notNull(),
+  resource_id: text("resource_id"),
+  details: text("details", { mode: "json" }).$type<Record<string, unknown> | null>(),
+  created_at: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$default(() => new Date()),
+});
+
+export type AuditLogRecord = typeof auditLog.$inferSelect;
+export type AuditLogInsert = typeof auditLog.$inferInsert;

@@ -4,6 +4,7 @@ import type { JSX } from "react";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "~/components/menu";
 import type { User } from "~/types/User";
 import cn from "~/utils/cn";
+import { formatOS } from "~/utils/host-info";
 import type { PopulatedNode } from "~/utils/node-info";
 import { getUserDisplayName } from "~/utils/user";
 
@@ -18,6 +19,12 @@ const STATUS_OPTIONS = [
 const ROUTE_OPTIONS = [
   { value: "exit-node", label: "Exit node" },
   { value: "subnet", label: "Subnet router" },
+] as const;
+
+const EXPIRY_OPTIONS = [
+  { value: "expired", label: "Expired" },
+  { value: "expiring", label: "Expiring" },
+  { value: "never", label: "No expiry" },
 ] as const;
 
 function FilterDropdown({
@@ -86,6 +93,8 @@ export function MachineFilters({ users, populatedNodes }: MachineFiltersProps): 
     filterTag,
     filterStatus,
     filterRoute,
+    filterOS,
+    filterExpiry,
     hasActiveFilters,
     setParam,
     clearFilters,
@@ -101,6 +110,10 @@ export function MachineFilters({ users, populatedNodes }: MachineFiltersProps): 
     .filter(Boolean)
     .sort()
     .map((tag) => ({ value: tag, label: tag }));
+
+  const osOptions = Array.from(new Set(populatedNodes.map((n) => formatOS(n.hostInfo?.OS))))
+    .sort()
+    .map((os) => ({ value: os, label: os }));
 
   return (
     <>
@@ -131,6 +144,20 @@ export function MachineFilters({ users, populatedNodes }: MachineFiltersProps): 
         onChange={(v) => setParam("route", v)}
         options={ROUTE_OPTIONS}
         value={filterRoute}
+      />
+      {osOptions.length > 0 && (
+        <FilterDropdown
+          label="OS"
+          onChange={(v) => setParam("os", v)}
+          options={osOptions}
+          value={filterOS}
+        />
+      )}
+      <FilterDropdown
+        label="Expiry"
+        onChange={(v) => setParam("expiry", v)}
+        options={EXPIRY_OPTIONS}
+        value={filterExpiry}
       />
       {hasActiveFilters && (
         <button

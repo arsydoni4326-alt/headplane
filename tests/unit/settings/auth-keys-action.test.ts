@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { authContext, requestApiContext } from "~/server/context";
+import { auditContext, authContext, requestApiContext } from "~/server/context";
 
 // Mock the log module to avoid console spam during tests
 vi.mock("~/utils/log", () => ({
@@ -32,10 +32,20 @@ function mockRequest(formData: FormData): Request {
 // returns the matching mock depending on the requested key.
 function createMockContext(create: ReturnType<typeof vi.fn>) {
   return {
-    get: (context: typeof authContext | typeof requestApiContext) => {
+    get: (context: typeof authContext | typeof requestApiContext | typeof auditContext) => {
       if (context === authContext) return { can: () => true };
+      if (context === auditContext) return { record: vi.fn().mockResolvedValue(undefined) };
       if (context === requestApiContext) {
-        return () => Promise.resolve({ principal: {}, api: { preAuthKeys: { create } } });
+        return () =>
+          Promise.resolve({
+            principal: {
+              kind: "api_key",
+              sessionId: "test-session",
+              displayName: "test",
+              apiKey: "test-key",
+            },
+            api: { preAuthKeys: { create } },
+          });
       }
       return undefined;
     },

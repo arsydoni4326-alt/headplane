@@ -30,12 +30,16 @@ export default [
     route("/users", "routes/users/overview.tsx"),
     route("/acls", "routes/acls/overview.tsx"),
     route("/dns", "routes/dns/overview.tsx"),
+    route("/derp", "routes/derp/overview.tsx"),
+    route("/topology", "routes/topology/overview.tsx"),
+    route("/audit", "routes/audit/overview.tsx"),
 
     ...prefix("/settings", [
       index("routes/settings/overview.tsx"),
       route("/auth-keys", "routes/settings/auth-keys/overview.tsx"),
       route("/restrictions", "routes/settings/restrictions/overview.tsx"),
       route("/agent", "routes/settings/agent.tsx"),
+      route("/export", "routes/settings/export/overview.tsx"),
     ]),
   ]),
 ];

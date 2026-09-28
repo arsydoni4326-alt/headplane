@@ -139,6 +139,7 @@ interface HeadscaleConfigState {
 interface HeadscaleConfig {
   readable: () => boolean;
   writable: () => boolean;
+  toString: () => string | undefined;
   getDNSConfig: () => DNSConfigView;
   getMagicDNSBaseDomain: () => string | undefined;
   getOIDCConfig: () => OIDCConfigView | undefined;
@@ -167,6 +168,7 @@ function createHeadscaleConfig(
   return {
     readable: () => readable(state),
     writable: () => writable(state),
+    toString: () => state.document?.toString(),
     getDNSConfig: () => getDNSConfig(state),
     getMagicDNSBaseDomain: () => getMagicDNSBaseDomain(state),
     getOIDCConfig: () => getOIDCConfig(state),

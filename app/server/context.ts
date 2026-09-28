@@ -4,6 +4,7 @@ import { createContext } from "react-router";
 
 import log from "~/utils/log";
 
+import { createAuditService } from "./audit";
 import type { HeadplaneConfig } from "./config/config-schema";
 import { loadIntegration } from "./config/integration";
 import { createDbClient } from "./db/client.server";
@@ -18,6 +19,7 @@ import { createAuthService, type Principal } from "./web/auth";
 export type AppContext = Awaited<ReturnType<typeof createAppContext>>;
 export const agentsContext = createContext<AppContext["agents"]>();
 export const appConfigContext = createContext<AppContext["config"]>();
+export const auditContext = createContext<AppContext["audit"]>();
 export const authContext = createContext<AppContext["auth"]>();
 export const dbContext = createContext<AppContext["db"]>();
 export const headscaleContext = createContext<AppContext["headscale"]>();
@@ -30,6 +32,7 @@ export const requestApiContext = createContext<AppContext["apiForRequest"]>();
 
 export async function createAppContext(config: HeadplaneConfig) {
   const db = await createDbClient(join(config.server.data_path, "hp_persist.db"));
+  const audit = createAuditService(db);
   const headscale = await createHeadscale({
     url: config.headscale.url,
     certPath: config.headscale.tls_cert_path,
@@ -114,6 +117,7 @@ export async function createAppContext(config: HeadplaneConfig) {
   return {
     config,
     db,
+    audit,
     headscale,
     headscaleApiKey,
     agents,
