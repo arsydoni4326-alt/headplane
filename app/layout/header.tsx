@@ -3,9 +3,12 @@ import {
   CircleQuestionMark,
   CircleUser,
   Globe,
+  History,
   Lock,
   Monitor,
   Moon,
+  Network,
+  Radio,
   RefreshCw,
   Server,
   Settings,
@@ -19,11 +22,9 @@ import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "~/compo
 import logoBg from "~/logo/dark-bg.svg";
 import logoDark from "~/logo/dark.svg";
 import logoLight from "~/logo/light.svg";
+import { useUpdateCheckContext } from "~/update-check";
 import cn from "~/utils/cn";
 import type { ColorScheme } from "~/utils/color-scheme";
-import {
-  useUpdateCheckContext,
-} from "~/update-check";
 
 export interface HeaderProps {
   user: {
@@ -40,6 +41,7 @@ export interface HeaderProps {
     users: boolean;
     policy: boolean;
     settings: boolean;
+    audit: boolean;
   };
   configAvailable: boolean;
 }
@@ -49,6 +51,9 @@ const tabs = [
   { to: "/users", icon: Users, label: "Users", key: "users" },
   { to: "/acls", icon: Lock, label: "Access Control", key: "policy" },
   { to: "/dns", icon: Globe, label: "DNS", key: "dns" },
+  { to: "/topology", icon: Network, label: "Topology", key: "machines" },
+  { to: "/derp", icon: Radio, label: "DERP", key: "audit" },
+  { to: "/audit", icon: History, label: "Audit", key: "audit" },
   { to: "/settings", icon: Settings, label: "Settings", key: "settings" },
 ] as const;
 
@@ -241,23 +246,14 @@ export default function Header({ user, access, configAvailable }: HeaderProps) {
  */
 function UpdateCheckMenuItem() {
   const ctx = useUpdateCheckContext();
-  const count =
-    (ctx.headplaneUpdate !== null ? 1 : 0) +
-    (ctx.headscaleUpdate !== null ? 1 : 0);
+  const count = (ctx.headplaneUpdate !== null ? 1 : 0) + (ctx.headscaleUpdate !== null ? 1 : 0);
 
   return (
-    <MenuItem
-      onClick={() => ctx.checkNow("manual")}
-      disabled={ctx.isChecking}
-    >
+    <MenuItem onClick={() => ctx.checkNow("manual")} disabled={ctx.isChecking}>
       <div className="flex w-full items-center gap-2">
-        <RefreshCw
-          className={`size-4 ${ctx.isChecking ? "animate-spin" : ""}`}
-        />
+        <RefreshCw className={`size-4 ${ctx.isChecking ? "animate-spin" : ""}`} />
         <span className="flex-1">
-          {ctx.isChecking
-            ? "Checking for updates..."
-            : "Check for Updates"}
+          {ctx.isChecking ? "Checking for updates..." : "Check for Updates"}
         </span>
         {count > 0 && (
           <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-500 text-xs font-semibold text-white">

@@ -1,3 +1,27 @@
+# 0.8.0-arsydoni4326-alt (September 28, 2026)
+
+## Changes
+
+- **Phase 4: Feature Expansion** — machine search/filters & bulk operations,
+  audit log, DERP status page, ACL/config export-import, network topology
+  visualization, and version compatibility tracking:
+  - Machines: added OS and expiry filters (URL-persisted) and multi-select
+    bulk actions (expire, delete, tag) with confirmation dialogs.
+  - Audit log: a new `/audit` page records who changed what (machines, ACL,
+    DNS, auth keys, users) with action/actor filters and pagination.
+  - DERP status: a new `/derp` page shows DERP regions, nodes, ports, and IPs
+    from the new `GET /api/v1/derp` endpoint, with graceful degradation on
+    older servers.
+  - Export/import: the ACL policy can be exported as HuJSON and imported from
+    a file; the Headscale configuration can be exported as YAML or a JSON
+    bundle and imported from `/settings/export`.
+  - Topology: a new `/topology` page renders the tailnet as an interactive SVG
+    graph grouped by owner, with subnet routers, exit-node highlighting,
+    pan/zoom, and click-through to machine details.
+  - Version compatibility: the settings page shows the connected Headscale
+    version and lists features unavailable on it; feature pages show
+    compatibility notices instead of failing.
+
 # 0.7.9-arsydoni4326-alt (September 27, 2026)
 
 - Docker builds now embed the build time (`HEADPLANE_BUILD_TIME` / `BUILD_DATE`

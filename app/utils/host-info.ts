@@ -19,7 +19,7 @@ export function getOSInfo(host: HostInfo) {
   return `${formattedOS} ${OSVersion ?? ""}`.trim();
 }
 
-function formatOS(os?: string) {
+export function formatOS(os?: string) {
   switch (os) {
     case "macOS":
     case "iOS":

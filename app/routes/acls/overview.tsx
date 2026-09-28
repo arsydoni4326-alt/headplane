@@ -1,14 +1,16 @@
 import {
   AlertCircle,
   Construction,
+  Download,
   Eye,
   FlaskConical,
   Pencil,
   Shield,
   TagsIcon,
+  Upload,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { isRouteErrorResponse, useFetcher, useRevalidator } from "react-router";
 
 import Button from "~/components/button";
@@ -52,6 +54,7 @@ export default function Page({
   const fetcher = useFetcher<typeof action>();
   const { revalidate } = useRevalidator();
   const disabled = !access || !writable; // Disable if no permission or not writable
+  const importRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(() => parsePolicy(codePolicy), [codePolicy]);
   const sources = useMemo(
@@ -222,29 +225,73 @@ export default function Page({
           </div>
         </TabsPanel>
       </Tabs>
-      <Button
-        className="mr-2"
-        disabled={
-          disabled || fetcher.state !== "idle" || codePolicy.length === 0 || codePolicy === policy
-        }
-        onClick={() => {
-          const formData = new FormData();
-          formData.append("policy", codePolicy);
-          fetcher.submit(formData, { method: "PATCH" });
-        }}
-        variant="heavy"
-      >
-        Save
-      </Button>
-      <Button
-        disabled={disabled || fetcher.state !== "idle" || codePolicy === policy}
-        onClick={() => {
-          // Reset the editor to the original policy
-          setCodePolicy(policy);
-        }}
-      >
-        Discard Changes
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          className="mr-2"
+          disabled={
+            disabled || fetcher.state !== "idle" || codePolicy.length === 0 || codePolicy === policy
+          }
+          onClick={() => {
+            const formData = new FormData();
+            formData.append("policy", codePolicy);
+            fetcher.submit(formData, { method: "PATCH" });
+          }}
+          variant="heavy"
+        >
+          Save
+        </Button>
+        <Button
+          disabled={disabled || fetcher.state !== "idle" || codePolicy === policy}
+          onClick={() => {
+            // Reset the editor to the original policy
+            setCodePolicy(policy);
+          }}
+        >
+          Discard Changes
+        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            disabled={codePolicy.length === 0}
+            onClick={() => {
+              const blob = new Blob([codePolicy], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "acl-policy.hujson";
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            variant="light"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+          <Button onClick={() => importRef.current?.click()} variant="light">
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
+          <input
+            accept=".json,.hujson"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                const content = reader.result as string;
+                if (content) {
+                  setCodePolicy(content);
+                }
+              };
+              reader.readAsText(file);
+              // Reset the input so the same file can be re-imported.
+              e.target.value = "";
+            }}
+            ref={importRef}
+            type="file"
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,8 @@ export interface MachineFilterParams {
   filterTag: string | null;
   filterStatus: "online" | "offline" | "expired" | null;
   filterRoute: "exit-node" | "subnet" | null;
+  filterOS: string | null;
+  filterExpiry: "expired" | "expiring" | "never" | null;
   hasActiveFilters: boolean;
   setParam: (key: string, value: string | null) => void;
   clearFilters: () => void;
@@ -17,9 +19,16 @@ export function useMachineFilterParams(): MachineFilterParams {
   const filterTag = searchParams.get("tag");
   const filterStatus = searchParams.get("status") as MachineFilterParams["filterStatus"];
   const filterRoute = searchParams.get("route") as MachineFilterParams["filterRoute"];
+  const filterOS = searchParams.get("os");
+  const filterExpiry = searchParams.get("expiry") as MachineFilterParams["filterExpiry"];
 
   const hasActiveFilters =
-    filterUser !== null || filterTag !== null || filterStatus !== null || filterRoute !== null;
+    filterUser !== null ||
+    filterTag !== null ||
+    filterStatus !== null ||
+    filterRoute !== null ||
+    filterOS !== null ||
+    filterExpiry !== null;
 
   const setParam = (key: string, value: string | null) => {
     setSearchParams((prev) => {
@@ -44,6 +53,8 @@ export function useMachineFilterParams(): MachineFilterParams {
     filterTag,
     filterStatus,
     filterRoute,
+    filterOS,
+    filterExpiry,
     hasActiveFilters,
     setParam,
     clearFilters,

@@ -30,6 +30,8 @@ interface Props {
   policyTags?: string[];
   supportsNodeOwnerChange: boolean;
   supportsDisablingKeyExpiry: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 export default function MachineRow({
@@ -42,6 +44,8 @@ export default function MachineRow({
   policyTags,
   supportsNodeOwnerChange,
   supportsDisablingKeyExpiry,
+  isSelected,
+  onToggleSelect,
 }: Props) {
   const uiTags = useMemo(() => uiTagsForNode(node, isAgent), [node, isAgent]);
 
@@ -55,6 +59,17 @@ export default function MachineRow({
 
   return (
     <tr className="group hover:bg-mist-100 dark:hover:bg-mist-800" key={node.id}>
+      {onToggleSelect ? (
+        <td className="py-2 pl-2">
+          <input
+            aria-label={`Select ${node.givenName}`}
+            checked={isSelected ?? false}
+            className="h-4 w-4 cursor-pointer rounded border-mist-300 text-indigo-600 focus:ring-indigo-500 dark:border-mist-600 dark:bg-mist-800"
+            onChange={() => onToggleSelect(node.id)}
+            type="checkbox"
+          />
+        </td>
+      ) : undefined}
       <td className="py-2 pl-2 focus-within:ring-3">
         <Link className={cn("group/link h-full focus:outline-hidden")} to={`/machines/${node.id}`}>
           <p
