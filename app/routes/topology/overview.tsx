@@ -84,14 +84,14 @@ export default function Page({ loaderData }: Route.ComponentProps) {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1 rounded-lg border border-mist-200 p-1 dark:border-mist-800">
+        <div className="flex items-center gap-1 rounded-lg bg-mist-100/80 p-1 dark:bg-mist-800/60">
           {filterOptions.map((option) => (
             <button
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium",
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-all",
                 filter === option.value
-                  ? "bg-indigo-500 text-white"
-                  : "text-mist-600 hover:bg-mist-100 dark:text-mist-300 dark:hover:bg-mist-800",
+                  ? "bg-white text-mist-900 shadow-surface dark:bg-mist-900 dark:text-white"
+                  : "text-mist-600 hover:text-mist-900 dark:text-mist-300 dark:hover:text-white",
               )}
               key={option.value}
               onClick={() => setFilter(option.value)}
