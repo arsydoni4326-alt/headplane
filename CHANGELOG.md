@@ -1,3 +1,21 @@
+# 0.8.1-arsydoni4326-alt (September 28, 2026)
+
+## Changes
+
+- **Phase 5: Testing, Performance, and CI/CD**:
+  - Added a Playwright end-to-end test suite (`tests/e2e/`) covering the
+    critical flows: login, machine management, ACL editing, and DNS settings.
+    Tests run against a real Headscale container (testcontainers) and the dev
+    server, wired into CI.
+  - Added axe-core accessibility tests (`tests/e2e/a11y.spec.ts`) that fail on
+    critical/serious violations across the main routes, wired into CI.
+  - Added Lighthouse CI (`lighthouserc.js`) with performance budgets for the
+    login page, wired into CI.
+  - Added a bundle-size analysis script (`scripts/analyze-bundle.mjs`) that
+    gates on per-chunk and total JS budgets in CI.
+  - The WASM SSH payload was already lazy-loaded (fetched only when the SSH page
+    is opened); verified and documented.
+
 # 0.8.0-arsydoni4326-alt (September 28, 2026)
 
 ## Changes
