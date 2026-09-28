@@ -1,3 +1,13 @@
+# 0.8.2-arsydoni4326-alt (September 28, 2026)
+
+## Changes
+
+- The `/topology` network graph got a visual refresh: nodes now use gradient
+  fills with soft colored shadows and a hover glow, subnet edges flow along
+  smooth animated curves, group labels sit in subtle pills, and the chart
+  container, tooltip, and zoom controls were restyled to match the modern
+  dashboard look.
+
 # 0.8.1-arsydoni4326-alt (September 28, 2026)
 
 ## Changes
