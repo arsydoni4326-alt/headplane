@@ -30,6 +30,15 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          name: "component",
+          include: ["tests/component/**/*.test.tsx"],
+          setupFiles: ["tests/component/setup.ts"],
+          environment: "jsdom",
+        },
+      },
+      {
+        extends: true,
+        test: {
           name: "integration:api",
           include: ["tests/integration/api/**/*.test.ts"],
           setupFiles: ["tests/integration/setup/vitest-hook.ts"],

@@ -1,4 +1,9 @@
-# Next
+# 0.8.5-arsydoni4326-alt (September 28, 2026)
+
+## Changes
+
+- Added comprehensive component tests for UI elements (button, chip, status-circle, switch, table-list, tabs, token-list) using Testing Library and vitest, improving test coverage and reliability.
+- Removed the update-check feature as it is no longer needed.
 
 # 0.8.3-arsydoni4326-alt (September 29, 2026)
 
