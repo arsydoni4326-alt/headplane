@@ -25,9 +25,9 @@ Here are a few more examples:
 - `HEADPLANE_HEADSCALE__URL`: `headscale.url`
 - `HEADPLANE_SERVER__PORT`: `server.port`
 
-**This functionality is NOT enabled by default!**
-To enable it, set the environment variable **`HEADPLANE_LOAD_ENV_OVERRIDES=true`**.
-Setting this also tells Headplane to load the relative `.env` file into the environment.
+> **Note:** `HEADPLANE_LOAD_ENV_OVERRIDES` is deprecated. Environment overrides are
+> always loaded and do not require this variable. It is accepted for backward
+> compatibility but has no effect.
 
 > Also note that this is **only** for configuration overrides, not for general
 > environment variables meaning you cannot specify variables such as

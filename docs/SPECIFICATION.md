@@ -158,6 +158,9 @@ functionality of the official Tailscale admin console.
 
 - Unit tests (vitest, `unit` project) cover service logic in isolation
   using closure-factory services with explicit dependencies.
+- Component tests (vitest, `component` project) cover the shared UI component
+  library (button, dialog, table-list, token-list, status-circle, tabs, switch,
+  chip, etc.) using jsdom and @testing-library/react.
 - Integration tests (`integration:*` projects) use `testcontainers` with
   real providers (Dex, Keycloak) and a real Headscale instance where
   practical.
