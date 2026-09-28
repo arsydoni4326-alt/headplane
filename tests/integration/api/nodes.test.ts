@@ -2,7 +2,13 @@ import { RouterContextProvider } from "react-router";
 import { describe, expect, test, vi } from "vitest";
 
 import { machineAction } from "~/routes/machines/machine-actions";
-import { authContext, headscaleLiveStoreContext, requestApiContext } from "~/server/context";
+import {
+  auditContext,
+  authContext,
+  headscaleLiveStoreContext,
+  requestApiContext,
+} from "~/server/context";
+import type { Principal } from "~/server/web/auth";
 import { Capabilities } from "~/server/web/roles";
 
 import { getBootstrapClient, getNode, getRuntimeClient, HS_VERSIONS } from "../setup/env";
@@ -22,14 +28,28 @@ function registerRequest(registerKey: string) {
 function actionContext(api: Awaited<ReturnType<typeof getRuntimeClient>>) {
   const auth = { can: vi.fn(() => true) };
   const liveStore = { refresh: vi.fn() };
-  const principal = { id: "integration-user" };
+  const audit = { record: vi.fn().mockResolvedValue(undefined), list: vi.fn() };
+  const principal: Principal = {
+    kind: "oidc",
+    sessionId: "integration-session",
+    user: {
+      id: "integration-user",
+      subject: "integration-subject",
+      role: "admin",
+      headscaleUserId: undefined,
+    },
+    profile: {
+      name: "Integration User",
+    },
+  };
   const context = new RouterContextProvider();
 
+  context.set(auditContext, audit as never);
   context.set(authContext, auth as never);
   context.set(headscaleLiveStoreContext, liveStore as never);
   context.set(requestApiContext, vi.fn(async () => ({ principal, api })) as never);
 
-  return { auth, context, liveStore };
+  return { audit, auth, context, liveStore };
 }
 
 describe.sequential.for(HS_VERSIONS)("Headscale %s: Users", (version) => {
@@ -38,7 +58,7 @@ describe.sequential.for(HS_VERSIONS)("Headscale %s: Users", (version) => {
   test("nodes can register from a Tailscale registration URL", async () => {
     const client = await getRuntimeClient(version);
     const tailnetNode = await getNode(version);
-    const { auth, context, liveStore } = actionContext(client);
+    const { audit, auth, context, liveStore } = actionContext(client);
 
     const user = await client.users.create({ name: "node-reg@" });
     expect(user.name).toBe("node-reg@");
@@ -51,6 +71,9 @@ describe.sequential.for(HS_VERSIONS)("Headscale %s: Users", (version) => {
 
     expect(auth.can).toHaveBeenCalledWith(expect.anything(), Capabilities.write_machines);
     expect(liveStore.refresh).toHaveBeenCalledOnce();
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "machine.register", resourceType: "machine" }),
+    );
     expect(response).toBeInstanceOf(Response);
     expect((response as Response).status).toBe(302);
 
