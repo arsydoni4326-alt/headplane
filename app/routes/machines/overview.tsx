@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
 import Code from "~/components/code";
+import EmptyState from "~/components/empty-state";
 import Input from "~/components/input";
 import Link from "~/components/link";
 import PageError from "~/components/page-error";
@@ -299,6 +300,40 @@ export default function Page({ loaderData }: Route.ComponentProps) {
     setSelectedIds(new Set());
   }, [searchQuery, filterUser, filterTag, filterStatus, filterRoute, filterOS, filterExpiry]);
 
+  // Handle empty state: no machines at all
+  if (loaderData.populatedNodes.length === 0) {
+    return (
+      <>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col">
+            <h1 className="mb-2 text-2xl font-medium">Machines</h1>
+            <p>
+              Manage the devices connected to your Tailnet.{" "}
+              <Link external styled to="https://tailscale.com/kb/1372/manage-devices">
+                Learn more
+              </Link>
+            </p>
+          </div>
+          <NewMachine
+            disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
+            isDisabled={!loaderData.writable}
+            server={loaderData.publicServer ?? loaderData.server}
+            users={loaderData.users}
+          />
+        </div>
+        <EmptyState
+          title="No machines yet"
+          description="Connect your first device to get started. You can register a machine using a pre-authenticated key or the standard registration flow."
+          secondaryAction={{
+            label: "Learn More",
+            onClick: () => window.open("https://tailscale.com/kb/1017/install", "_blank"),
+            variant: "ghost",
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -521,11 +556,20 @@ export default function Page({ loaderData }: Route.ComponentProps) {
           >
             {filteredAndSortedNodes.length === 0 ? (
               <tr>
-                <td
-                  className="py-8 text-center text-mist-500"
-                  colSpan={loaderData.agent !== undefined ? 7 : 6}
-                >
-                  No machines match the current filters
+                <td colSpan={loaderData.agent !== undefined ? 7 : 6}>
+                  <EmptyState
+                    variant="filtered"
+                    title="No machines found"
+                    description="No machines match your current search or filter criteria. Try adjusting your filters or clearing the search."
+                    action={{
+                      label: "Clear Filters",
+                      onClick: () => {
+                        clearSearch();
+                        setSearchParams(new URLSearchParams());
+                      },
+                      variant: "light",
+                    }}
+                  />
                 </td>
               </tr>
             ) : (
