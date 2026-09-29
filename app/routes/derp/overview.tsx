@@ -2,6 +2,7 @@ import { Globe, Server } from "lucide-react";
 
 import Chip from "~/components/chip";
 import CompatibilityNotice from "~/components/compatibility-notice";
+import EmptyState from "~/components/empty-state";
 import PageError from "~/components/page-error";
 import { authContext, headscaleContext, requestApiContext } from "~/server/context";
 import { unsupportedFor } from "~/server/headscale/compatibility";
@@ -59,10 +60,11 @@ export default function Page({ loaderData }: Route.ComponentProps) {
       <CompatibilityNotice serverVersion={version} statuses={unsupported} />
 
       {derp === null ? (
-        <div className="rounded-lg border border-mist-200 p-8 text-center text-mist-500 dark:border-mist-800">
-          DERP status is unavailable because this Headscale server does not expose the DERP status
-          endpoint.
-        </div>
+        <EmptyState
+          variant="error"
+          title="DERP status unavailable"
+          description="This Headscale server does not expose the DERP status endpoint. The endpoint is available in fork versions of Headscale."
+        />
       ) : (
         <>
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -97,9 +99,10 @@ export default function Page({ loaderData }: Route.ComponentProps) {
           </div>
 
           {derp.regions.length === 0 ? (
-            <div className="rounded-lg border border-mist-200 p-8 text-center text-mist-500 dark:border-mist-800">
-              No DERP regions are configured.
-            </div>
+            <EmptyState
+              title="No DERP regions configured"
+              description="No DERP relay regions are currently configured for this tailnet. DERP relays provide connectivity when direct peer-to-peer connections cannot be established."
+            />
           ) : (
             <div className="flex flex-col gap-6">
               {derp.regions.map((region) => (

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import EmptyState from "~/components/empty-state";
 import PageError from "~/components/page-error";
 import {
   appConfigContext,
@@ -210,9 +211,11 @@ export default function Page({ loaderData }: Route.ComponentProps) {
       <section>
         <h2 className="mb-3 text-lg font-medium">Headplane Users</h2>
         {loaderData.headplaneUsers.length === 0 ? (
-          <p className="text-sm text-mist-600 dark:text-mist-300">
-            No users have signed into Headplane yet.
-          </p>
+          <EmptyState
+            title="No users yet"
+            description="No users have signed into Headplane yet. Users will appear here after their first login."
+            variant="default"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] table-auto rounded-lg">
