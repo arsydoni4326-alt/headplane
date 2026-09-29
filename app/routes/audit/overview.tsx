@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "react-router";
 
+import EmptyState from "~/components/empty-state";
 import Input from "~/components/input";
 import PageError from "~/components/page-error";
 import Select from "~/components/select";
@@ -138,8 +139,27 @@ export default function Page({ loaderData }: Route.ComponentProps) {
           <tbody className="divide-y divide-mist-100 border-t border-mist-100 align-top dark:divide-mist-800 dark:border-mist-800">
             {records.length === 0 ? (
               <tr>
-                <td className="py-8 text-center text-mist-500" colSpan={5}>
-                  No audit entries match the current filters
+                <td colSpan={5}>
+                  <EmptyState
+                    variant={action || actorName ? "filtered" : "default"}
+                    title={action || actorName ? "No matching entries" : "No audit entries yet"}
+                    description={
+                      action || actorName
+                        ? "No audit log entries match your current filters. Try adjusting the filters or clearing them."
+                        : "No actions have been recorded yet. Audit entries will appear here when changes are made through Headplane."
+                    }
+                    action={
+                      action || actorName
+                        ? {
+                            label: "Clear Filters",
+                            onClick: () => {
+                              setSearchParams(new URLSearchParams());
+                            },
+                            variant: "light",
+                          }
+                        : undefined
+                    }
+                  />
                 </td>
               </tr>
             ) : (
