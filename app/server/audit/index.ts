@@ -9,6 +9,7 @@ export type AuditAction =
   | "machine.register"
   | "machine.rename"
   | "machine.expire"
+  | "machine.rotate_key"
   | "machine.delete"
   | "machine.tags"
   | "machine.routes"

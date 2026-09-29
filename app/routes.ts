@@ -30,6 +30,7 @@ export default [
     route("/users", "routes/users/overview.tsx"),
     route("/acls", "routes/acls/overview.tsx"),
     route("/dns", "routes/dns/overview.tsx"),
+    route("/routes", "routes/routes/overview.tsx"),
     route("/derp", "routes/derp/overview.tsx"),
     route("/topology", "routes/topology/overview.tsx"),
     route("/audit", "routes/audit/overview.tsx"),

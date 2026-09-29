@@ -12,6 +12,7 @@ import Delete from "../dialogs/delete";
 import Expire from "../dialogs/expire";
 import Move from "../dialogs/move";
 import Rename from "../dialogs/rename";
+import RotateKey from "../dialogs/rotate-key";
 import Routes from "../dialogs/routes";
 import Tags from "../dialogs/tags";
 
@@ -27,7 +28,7 @@ interface MenuProps {
   supportsDisablingKeyExpiry: boolean;
 }
 
-type Modal = "rename" | "expire" | "remove" | "routes" | "move" | "tags" | null;
+type Modal = "rename" | "expire" | "remove" | "routes" | "move" | "tags" | "rotate_key" | null;
 
 export default function MachineMenu({
   node,
@@ -49,6 +50,15 @@ export default function MachineMenu({
       {modal === "remove" && (
         <Delete
           isOpen={modal === "remove"}
+          machine={node}
+          setIsOpen={(isOpen) => {
+            if (!isOpen) setModal(null);
+          }}
+        />
+      )}
+      {modal === "rotate_key" && (
+        <RotateKey
+          isOpen={modal === "rotate_key"}
           machine={node}
           setIsOpen={(isOpen) => {
             if (!isOpen) setModal(null);
@@ -185,6 +195,7 @@ export default function MachineMenu({
             <MenuItem onClick={() => setModal("move")}>Change owner</MenuItem>
           )}
           <MenuSeparator />
+          <MenuItem onClick={() => setModal("rotate_key")}>Rotate key</MenuItem>
           {!isNoExpiry(node.expiry) && (
             <MenuItem variant="danger" disabled={node.expired} onClick={() => setModal("expire")}>
               Expire

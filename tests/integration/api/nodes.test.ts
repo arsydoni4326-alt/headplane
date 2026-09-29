@@ -134,6 +134,37 @@ describe.sequential.for(HS_VERSIONS)("Headscale %s: Users", (version) => {
     expect(expiredNode.expiry).toBeDefined();
   });
 
+  test("node keys can be rotated via the machine action", async () => {
+    const client = await getRuntimeClient(version);
+    const { audit, context } = actionContext(client);
+
+    const form = new FormData();
+    form.set("action_id", "rotate_key");
+    form.set("node_id", workingNodeId);
+
+    const response = await machineAction({
+      request: new Request("http://headplane.test/machines", {
+        method: "POST",
+        body: form,
+      }),
+      context,
+      params: {},
+    } as never);
+
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "machine.rotate_key",
+        resourceType: "machine",
+        resourceId: workingNodeId,
+      }),
+    );
+    expect(response).toEqual(
+      expect.objectContaining({
+        message: "Key rotated — the machine must re-authenticate",
+      }),
+    );
+  });
+
   test("key expiry of nodes can be toggled", async (context) => {
     const bootstrap = await getBootstrapClient(version);
     // Key expiry was introduced in 0.29.0

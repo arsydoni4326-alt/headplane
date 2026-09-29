@@ -166,6 +166,20 @@ export async function machineAction({ request, context }: Route.ActionArgs) {
       return { message: "Machine expired" };
     }
 
+    case "rotate_key": {
+      await api.nodes.expire(nodeId);
+      await headscaleLiveStore.refresh(nodesResource, api);
+      const actor = actorFromPrincipal(principal);
+      await audit.record({
+        ...actor,
+        action: "machine.rotate_key",
+        resourceType: "machine",
+        resourceId: nodeId,
+        details: { name: node.givenName },
+      });
+      return { message: "Key rotated — the machine must re-authenticate" };
+    }
+
     case "toggle_expiry": {
       const disableExpiry = String(formData.get("disableExpiry")) === "true";
       await api.nodes.toggleExpiry(nodeId, disableExpiry);
