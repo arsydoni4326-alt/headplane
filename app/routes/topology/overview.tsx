@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import EmptyState from "~/components/empty-state";
 import PageError from "~/components/page-error";
 import Topology from "~/components/topology/topology";
 import { authContext, headscaleLiveStoreContext, requestApiContext } from "~/server/context";
@@ -70,6 +71,33 @@ export default function Page({ loaderData }: Route.ComponentProps) {
     { value: "expired", label: "Expired" },
   ];
 
+  // Show empty state if no machines at all
+  if (nodes.length === 0) {
+    return (
+      <>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col">
+            <h1 className="mb-2 text-2xl font-medium">Topology</h1>
+            <p>
+              A visual overview of your tailnet. Nodes are grouped by owner; subnet routers show their
+              advertised routes below them, and exit nodes are highlighted with an amber ring. Click a
+              node to open its details.
+            </p>
+          </div>
+        </div>
+        <EmptyState
+          title="No machines to visualize"
+          description="The topology view shows the network structure of your tailnet. Add your first machine to see it appear here."
+          secondaryAction={{
+            label: "View Machines",
+            onClick: () => window.location.href = "/machines",
+            variant: "ghost",
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -119,32 +147,50 @@ export default function Page({ loaderData }: Route.ComponentProps) {
         </span>
       </div>
 
-      <Topology graph={graph} />
+      {filteredNodes.length === 0 ? (
+        <EmptyState
+          variant="filtered"
+          title="No machines match filters"
+          description="No machines match your current filter settings. Try adjusting the status or owner filter to see more results."
+          action={{
+            label: "Clear Filters",
+            onClick: () => {
+              setFilter("all");
+              setSelectedGroup(null);
+            },
+            variant: "light",
+          }}
+        />
+      ) : (
+        <>
+          <Topology graph={graph} />
 
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-mist-600 dark:text-mist-300">
-        <span className="font-medium">Legend:</span>
-        {groups.map((group) => (
-          <span className="flex items-center gap-1.5" key={group}>
-            <span
-              className="inline-block h-3 w-3 rounded-full"
-              style={{ backgroundColor: colorForGroup(group) }}
-            />
-            {group}
-          </span>
-        ))}
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full border-2 border-amber-400" />
-          Exit node
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full bg-green-500" />
-          Online
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded-full bg-mist-300 dark:bg-mist-600" />
-          Offline
-        </span>
-      </div>
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-mist-600 dark:text-mist-300">
+            <span className="font-medium">Legend:</span>
+            {groups.map((group) => (
+              <span className="flex items-center gap-1.5" key={group}>
+                <span
+                  className="inline-block h-3 w-3 rounded-full"
+                  style={{ backgroundColor: colorForGroup(group) }}
+                />
+                {group}
+              </span>
+            ))}
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-full border-2 border-amber-400" />
+              Exit node
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-full bg-green-500" />
+              Online
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded-full bg-mist-300 dark:bg-mist-600" />
+              Offline
+            </span>
+          </div>
+        </>
+      )}
     </>
   );
 }

@@ -1,4 +1,8 @@
-# Next
+# 0.8.7-arsydoni4326-alt (September 29, 2026)
+
+## Changes
+
+- Standardized empty state components across auth-keys and topology routes for consistency.
 
 # 0.8.5-arsydoni4326-alt (September 28, 2026)
 

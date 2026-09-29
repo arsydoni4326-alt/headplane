@@ -2,6 +2,7 @@ import { FileKey2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import Code from "~/components/code";
+import EmptyState from "~/components/empty-state";
 import Link from "~/components/link";
 import Notice from "~/components/notice";
 import Select from "~/components/select";
@@ -263,14 +264,21 @@ export default function Page({
       </div>
       <TableList className="mt-4">
         {keys.flatMap(({ preAuthKeys }) => preAuthKeys).length === 0 ? (
-          <TableList.Item className="flex flex-col items-center gap-2.5 py-4 opacity-70">
-            <FileKey2 />
-            <p className="font-semibold">No pre-auth keys have been created yet.</p>
+          <TableList.Item>
+            <EmptyState
+              icon={<FileKey2 />}
+              title="No pre-auth keys yet"
+              description="Pre-authentication keys allow you to easily register new devices without manual approval. Create your first key to get started."
+            />
           </TableList.Item>
         ) : filteredKeys.length === 0 ? (
-          <TableList.Item className="flex flex-col items-center gap-2.5 py-4 opacity-70">
-            <FileKey2 />
-            <p className="font-semibold">No pre-auth keys match the selected filters.</p>
+          <TableList.Item>
+            <EmptyState
+              variant="filtered"
+              icon={<FileKey2 />}
+              title="No keys match filters"
+              description="No pre-authentication keys match your selected user and status filters. Try adjusting the filters to see more results."
+            />
           </TableList.Item>
         ) : (
           filteredKeys.map((key) => {
