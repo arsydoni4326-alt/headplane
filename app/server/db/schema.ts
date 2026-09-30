@@ -59,3 +59,22 @@ export const auditLog = sqliteTable("audit_log", {
 
 export type AuditLogRecord = typeof auditLog.$inferSelect;
 export type AuditLogInsert = typeof auditLog.$inferInsert;
+
+export const instances = sqliteTable("instances", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  api_url: text("api_url").notNull(),
+  api_key_encrypted: text("api_key_encrypted"),
+  oidc_client_id: text("oidc_client_id"),
+  oidc_client_secret_encrypted: text("oidc_client_secret_encrypted"),
+  is_default: integer("is_default", { mode: "boolean" }).notNull().default(false),
+  created_at: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$default(() => new Date()),
+  updated_at: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .$default(() => new Date()),
+});
+
+export type InstanceRecord = typeof instances.$inferSelect;
+export type InstanceInsert = typeof instances.$inferInsert;
