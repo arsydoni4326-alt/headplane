@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, beforeEach } from "vitest";
 
-import { PluginSlot } from "~/plugins/PluginSlot";
 import { PluginProvider } from "~/plugins/PluginProvider";
+import { PluginSlot } from "~/plugins/PluginSlot";
 import { pluginRegistry } from "~/plugins/registry";
 import type { Plugin } from "~/plugins/types";
 
@@ -30,7 +30,7 @@ describe("PluginSlot", () => {
     render(
       <PluginProvider>
         <PluginSlot slot="dashboard" />
-      </PluginProvider>
+      </PluginProvider>,
     );
 
     // Wait for the widget to appear
@@ -42,7 +42,7 @@ describe("PluginSlot", () => {
     const { container } = render(
       <PluginProvider>
         <PluginSlot slot="dashboard" />
-      </PluginProvider>
+      </PluginProvider>,
     );
 
     expect(container.firstChild).toBeNull();
@@ -68,7 +68,7 @@ describe("PluginSlot", () => {
     render(
       <PluginProvider>
         <PluginSlot slot="dashboard" />
-      </PluginProvider>
+      </PluginProvider>,
     );
 
     const widgets = await screen.findAllByTestId(/^widget-/);
@@ -101,7 +101,7 @@ describe("PluginSlot", () => {
     render(
       <PluginProvider>
         <PluginSlot slot="dashboard" context={{ testValue: "Hello Context" }} />
-      </PluginProvider>
+      </PluginProvider>,
     );
 
     const widget = await screen.findByTestId("context-widget");
@@ -130,7 +130,7 @@ describe("PluginSlot", () => {
     render(
       <PluginProvider>
         <PluginSlot slot="dashboard" wrapper={Wrapper} />
-      </PluginProvider>
+      </PluginProvider>,
     );
 
     const wrapper = await screen.findByTestId("wrapper");
@@ -156,7 +156,7 @@ describe("PluginSlot", () => {
     render(
       <PluginProvider>
         <PluginSlot slot="dashboard" />
-      </PluginProvider>
+      </PluginProvider>,
     );
 
     const dashboardWidget = await screen.findByTestId("dashboard-widget");

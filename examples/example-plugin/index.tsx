@@ -17,8 +17,8 @@ function ExampleDashboardWidget() {
         Example Plugin Widget
       </h3>
       <p className="text-sm text-mist-600 dark:text-mist-400">
-        This widget is provided by the example plugin. It demonstrates how plugins can
-        inject UI components into various slots throughout Headplane.
+        This widget is provided by the example plugin. It demonstrates how plugins can inject UI
+        components into various slots throughout Headplane.
       </p>
       <div className="mt-3 text-xs text-mist-500 dark:text-mist-500">
         Plugin ID: com.example.demo-plugin
@@ -41,8 +41,10 @@ function ExamplePluginPage() {
           Welcome to the Example Plugin
         </h2>
         <p className="mb-4 text-mist-700 dark:text-mist-300">
-          This page demonstrates a custom route added by a plugin. Plugins can register
-          their own routes under the <code className="rounded bg-mist-100 px-1 py-0.5 dark:bg-mist-900">/plugins/</code> prefix.
+          This page demonstrates a custom route added by a plugin. Plugins can register their own
+          routes under the{" "}
+          <code className="rounded bg-mist-100 px-1 py-0.5 dark:bg-mist-900">/plugins/</code>{" "}
+          prefix.
         </p>
         <h3 className="mb-2 text-lg font-semibold text-mist-900 dark:text-mist-50">
           Plugin Capabilities
@@ -55,9 +57,7 @@ function ExamplePluginPage() {
           <li>Access slot-specific context data</li>
         </ul>
         <div className="mt-6 rounded-md bg-mist-50 p-4 dark:bg-mist-900">
-          <h4 className="mb-2 font-semibold text-mist-900 dark:text-mist-50">
-            Plugin Information
-          </h4>
+          <h4 className="mb-2 font-semibold text-mist-900 dark:text-mist-50">Plugin Information</h4>
           <dl className="space-y-1 text-sm text-mist-700 dark:text-mist-300">
             <div className="flex">
               <dt className="w-24 font-medium">ID:</dt>

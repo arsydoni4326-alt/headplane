@@ -7,8 +7,8 @@
 
 import React from "react";
 
-import type { RegisteredPlugin } from "./types";
 import { pluginRegistry } from "./registry";
+import type { RegisteredPlugin } from "./types";
 
 interface PluginContextValue {
   /** All registered plugins */
@@ -52,7 +52,7 @@ export function PluginProvider({ children }: PluginProviderProps) {
       plugins,
       initialized,
     }),
-    [plugins, initialized]
+    [plugins, initialized],
   );
 
   return <PluginContext.Provider value={value}>{children}</PluginContext.Provider>;

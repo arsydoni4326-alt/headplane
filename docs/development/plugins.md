@@ -110,7 +110,7 @@ Widgets inject UI components into predefined slots:
 ### Available Slots
 
 - `dashboard` - Main dashboard page
-- `machine-detail` - Machine detail page  
+- `machine-detail` - Machine detail page
 - `settings` - Settings page
 - `header` - Application header
 - `footer` - Application footer
@@ -125,7 +125,7 @@ import type { PluginWidgetProps } from "~/plugins";
 function MyWidget({ slot, context }: PluginWidgetProps) {
   // Context contains slot-specific data
   // For example, machine-detail slot includes the machine ID
-  
+
   return (
     <div className="rounded-lg border p-4">
       <h3 className="font-semibold">My Widget</h3>
@@ -239,4 +239,3 @@ See `headplane/examples/example-plugin/` for a complete working example.
 - Plugins run with full application permissions
 - Only install plugins from trusted sources
 - Review plugin code before installation
-

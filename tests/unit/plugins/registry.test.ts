@@ -40,7 +40,7 @@ describe("PluginRegistry", () => {
     await registry.register(() => plugin1);
 
     await expect(registry.register(() => plugin2)).rejects.toThrow(
-      'Plugin with id "duplicate-id" is already registered'
+      'Plugin with id "duplicate-id" is already registered',
     );
   });
 
@@ -56,7 +56,7 @@ describe("PluginRegistry", () => {
     });
 
     await expect(registry.register(() => plugin)).rejects.toThrow(
-      'Plugin route paths must start with "/plugins/"'
+      'Plugin route paths must start with "/plugins/"',
     );
   });
 
@@ -66,7 +66,7 @@ describe("PluginRegistry", () => {
     });
 
     await expect(registry.register(() => plugin)).rejects.toThrow(
-      'Plugin navigation paths must start with "/plugins/"'
+      'Plugin navigation paths must start with "/plugins/"',
     );
   });
 

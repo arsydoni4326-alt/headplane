@@ -20,7 +20,7 @@ describe("PluginProvider", () => {
     render(
       <PluginProvider>
         <TestComponent />
-      </PluginProvider>
+      </PluginProvider>,
     );
 
     await waitFor(() => {
@@ -38,7 +38,7 @@ describe("PluginProvider", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => render(<TestComponent />)).toThrow(
-      "usePlugins must be used within a PluginProvider"
+      "usePlugins must be used within a PluginProvider",
     );
 
     consoleSpy.mockRestore();
@@ -63,7 +63,7 @@ describe("PluginProvider", () => {
     render(
       <PluginProvider>
         <TestComponent />
-      </PluginProvider>
+      </PluginProvider>,
     );
 
     await waitFor(() => {

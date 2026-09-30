@@ -43,7 +43,9 @@ export class PluginRegistry {
       if (plugin.navigation) {
         for (const nav of plugin.navigation) {
           if (!nav.path.startsWith("/plugins/")) {
-            throw new Error(`Plugin navigation paths must start with "/plugins/", got: ${nav.path}`);
+            throw new Error(
+              `Plugin navigation paths must start with "/plugins/", got: ${nav.path}`,
+            );
           }
         }
       }
@@ -100,7 +102,7 @@ export class PluginRegistry {
             promise.catch((error: unknown) => {
               console.error(`Plugin ${registered.plugin.metadata.id} onReady failed:`, error);
               this.updateStatus(registered.plugin.metadata.id, "error", String(error));
-            })
+            }),
           );
         }
       }

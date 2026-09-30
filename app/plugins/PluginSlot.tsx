@@ -6,8 +6,8 @@
 
 import React from "react";
 
-import type { PluginSlot as PluginSlotType } from "./types";
 import { useActivePlugins } from "./PluginProvider";
+import type { PluginSlot as PluginSlotType } from "./types";
 
 interface PluginSlotProps {
   /** The slot identifier */
@@ -65,11 +65,7 @@ export function PluginSlot({ slot, context, wrapper: Wrapper }: PluginSlotProps)
         const content = <Component slot={slot} context={context} />;
 
         if (Wrapper) {
-          return (
-            <Wrapper key={key}>
-              {content}
-            </Wrapper>
-          );
+          return <Wrapper key={key}>{content}</Wrapper>;
         }
 
         return <React.Fragment key={key}>{content}</React.Fragment>;

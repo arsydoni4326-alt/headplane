@@ -42,7 +42,7 @@
 - Updated architecture documentation
 - Added multi-instance setup guide
 
-# Next
+# 0.8.9-arsydoni4326-alt (September 30, 2026)
 
 # 0.8.7-arsydoni4326-alt (September 29, 2026)
 
