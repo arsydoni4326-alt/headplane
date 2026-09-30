@@ -36,11 +36,14 @@ Every roadmap item must support these project tenets:
 ## Planned
 
 - **Machine management parity** — close gaps between the Tailscale admin
-  console and Headplane (route management, key rotation, device posture).
+  console and Headplane. Key rotation and a route overview page are
+  implemented; device posture remains deferred (requires significant policy
+  engine changes).
 - **Improved OIDC workflows** — finer-grained role mapping, better sync
   behavior for groups and roles, and per-provider troubleshooting docs.
 - **DNS management improvements** — better provisioning of DNS records into
-  Headscale, including `extra_records_path` handling.
+  Headscale. `extra_records_path` visibility, CNAME record support, and IP
+  address validation are implemented.
 
 ## Deferred
 
