@@ -1,3 +1,15 @@
+# 0.8.11-arsydoni4326-alt (September 30, 2026)
+
+## Changes
+
+- Routes page refactored from list to full-featured data table
+  - Added sortable columns (Status, Route, Type, Machine)
+  - Added real-time search/filtering across all fields
+  - Added pagination (10 routes per page)
+  - Replaced status circles with color-coded text labels (Approved/Pending)
+  - Reduced row height for more compact display
+  - Full responsive design with dark mode support
+
 # 0.8.10-arsydoni4326-alt (September 30, 2026)
 
 ## Changes
