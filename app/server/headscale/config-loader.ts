@@ -21,6 +21,7 @@ interface DNSConfigView {
   searchDomains: string[];
   overrideDns: boolean;
   extraRecords: DNSRecord[];
+  extraRecordsPath?: string;
 }
 
 interface OIDCConfigView {
@@ -199,6 +200,7 @@ function getDNSConfig(config: HeadscaleConfigState): DNSConfigView {
     searchDomains: dns.search_domains,
     overrideDns: dns.override_local_dns,
     extraRecords: dnsRecords(config),
+    extraRecordsPath: dns.extra_records_path,
   };
 }
 

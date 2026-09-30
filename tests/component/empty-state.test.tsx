@@ -53,11 +53,7 @@ describe("EmptyState", () => {
 
   it("renders default variant with inbox icon", () => {
     const { container } = render(
-      <EmptyState
-        title="Empty"
-        description="No items here."
-        variant="default"
-      />,
+      <EmptyState title="Empty" description="No items here." variant="default" />,
     );
 
     // Inbox icon should be present (aria-hidden)
@@ -67,11 +63,7 @@ describe("EmptyState", () => {
 
   it("renders error variant with alert icon", () => {
     const { container } = render(
-      <EmptyState
-        title="Error"
-        description="Something went wrong."
-        variant="error"
-      />,
+      <EmptyState title="Error" description="Something went wrong." variant="error" />,
     );
 
     const iconContainer = container.querySelector('[aria-hidden="true"]');
@@ -93,9 +85,7 @@ describe("EmptyState", () => {
   });
 
   it("icon is hidden from screen readers", () => {
-    const { container } = render(
-      <EmptyState title="Test" description="Test description" />,
-    );
+    const { container } = render(<EmptyState title="Test" description="Test description" />);
 
     const iconContainer = container.querySelector('[aria-hidden="true"]');
     expect(iconContainer).toBeInTheDocument();

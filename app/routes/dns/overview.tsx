@@ -71,6 +71,13 @@ export default function Page() {
           Your permissions do not allow you to modify the DNS settings for this tailnet.
         </Notice>
       )}
+      {data.extraRecordsPath ? (
+        <Notice>
+          DNS records are managed via the <Code>{data.extraRecordsPath}</Code> file (
+          <Code>dns.extra_records_path</Code>). Changes made here are written to that file and
+          picked up by Headscale automatically.
+        </Notice>
+      ) : undefined}
       <RenameTailnet isDisabled={isDisabled} name={data.baseDomain} />
       <ManageNS isDisabled={isDisabled} nameservers={allNs} overrideLocalDns={data.overrideDns} />
       <ManageRecords isDisabled={isDisabled} records={data.extraRecords} />

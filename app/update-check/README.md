@@ -40,11 +40,11 @@ the latest commit on the remote `main` branch.
 
 ## Files
 
-| File                 | Purpose                                   |
-| -------------------- | ----------------------------------------- |
-| `index.ts`           | Public exports                            |
-| `types.ts`           | Shared types                              |
-| `git-api.ts`         | GitHub API calls                          |
-| `useUpdateCheck.ts`  | React hook for update state               |
-| `UpdateCheckProvider.tsx` | Context provider                     |
-| `UpdateCheckModal.tsx`    | Modal component                      |
+| File                      | Purpose                     |
+| ------------------------- | --------------------------- |
+| `index.ts`                | Public exports              |
+| `types.ts`                | Shared types                |
+| `git-api.ts`              | GitHub API calls            |
+| `useUpdateCheck.ts`       | React hook for update state |
+| `UpdateCheckProvider.tsx` | Context provider            |
+| `UpdateCheckModal.tsx`    | Modal component             |

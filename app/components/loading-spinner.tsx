@@ -32,9 +32,7 @@ export default function LoadingSpinner({ label, size = "md", className }: Loadin
         className={cn("animate-spin text-mist-400 dark:text-mist-500", sizeClasses[size])}
         aria-hidden="true"
       />
-      {label && (
-        <p className="mt-3 text-sm text-mist-600 dark:text-mist-400">{label}</p>
-      )}
+      {label && <p className="mt-3 text-sm text-mist-600 dark:text-mist-400">{label}</p>}
     </div>
   );
 }

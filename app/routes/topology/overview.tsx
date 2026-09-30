@@ -79,9 +79,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
           <div className="flex flex-col">
             <h1 className="mb-2 text-2xl font-medium">Topology</h1>
             <p>
-              A visual overview of your tailnet. Nodes are grouped by owner; subnet routers show their
-              advertised routes below them, and exit nodes are highlighted with an amber ring. Click a
-              node to open its details.
+              A visual overview of your tailnet. Nodes are grouped by owner; subnet routers show
+              their advertised routes below them, and exit nodes are highlighted with an amber ring.
+              Click a node to open its details.
             </p>
           </div>
         </div>
@@ -90,7 +90,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
           description="The topology view shows the network structure of your tailnet. Add your first machine to see it appear here."
           secondaryAction={{
             label: "View Machines",
-            onClick: () => window.location.href = "/machines",
+            onClick: () => (window.location.href = "/machines"),
             variant: "ghost",
           }}
         />

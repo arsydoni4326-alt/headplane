@@ -39,6 +39,11 @@ functionality of the official Tailscale admin console.
   suggestions of existing tags in the tag dialog.
 - **FR-2.3**: Subnet routes per machine are visible and manageable.
 - **FR-2.4**: Machine names must be validated before submission to Headscale.
+- **FR-2.5**: Machine keys can be rotated, invalidating the current node key
+  and forcing the device to re-authenticate.
+- **FR-2.6**: A route overview page aggregates all subnet routes and exit
+  nodes across every machine, showing approved/pending status and allowing
+  routes to be approved or disabled from the overview.
 
 ### FR-3: Users
 
@@ -60,7 +65,10 @@ functionality of the official Tailscale admin console.
 - **FR-5.1**: DNS settings (MagicDNS, base domain, nameservers, search
   domains) can be viewed and edited from the UI.
 - **FR-5.2**: `dns.extra_records_path` from the Headscale configuration must
-  be handled correctly.
+  be handled correctly, including provisioning records to the JSON file and
+  indicating the record source in the UI.
+- **FR-5.3**: DNS records of type A, AAAA, and CNAME can be added and
+  removed, with value validation for each type.
 
 ### FR-6: Headscale Configuration
 
