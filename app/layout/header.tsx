@@ -10,6 +10,7 @@ import {
   Network,
   Radio,
   RefreshCw,
+  Route,
   Server,
   Settings,
   Sun,
@@ -51,8 +52,10 @@ const tabs = [
   { to: "/users", icon: Users, label: "Users", key: "users" },
   { to: "/acls", icon: Lock, label: "Access Control", key: "policy" },
   { to: "/dns", icon: Globe, label: "DNS", key: "dns" },
+  { to: "/routes", icon: Route, label: "Routes", key: "machines" },
   { to: "/topology", icon: Network, label: "Topology", key: "machines" },
   { to: "/derp", icon: Radio, label: "DERP", key: "audit" },
+  { to: "/instances", icon: Server, label: "Instances", key: "settings" },
   { to: "/audit", icon: History, label: "Audit", key: "audit" },
   { to: "/settings", icon: Settings, label: "Settings", key: "settings" },
 ] as const;
