@@ -8,7 +8,6 @@ import EmptyState from "~/components/empty-state";
 import Input from "~/components/input";
 import Link from "~/components/link";
 import PageError from "~/components/page-error";
-import StatusCircle from "~/components/status-circle";
 import Text from "~/components/text";
 import Title from "~/components/title";
 import { authContext, headscaleLiveStoreContext, requestApiContext } from "~/server/context";
@@ -314,13 +313,22 @@ export default function RoutesOverview({ loaderData }: Route.ComponentProps) {
                         className="transition-colors hover:bg-mist-50 dark:hover:bg-mist-900/50"
                         key={`${entry.node.id}:${entry.route}`}
                       >
-                        <td className="py-3 pr-4">
-                          <StatusCircle isOnline={entry.approved} />
+                        <td className="py-2 pr-4">
+                          <span
+                            className={cn(
+                              "text-xs font-medium",
+                              entry.approved
+                                ? "text-green-600 dark:text-green-500"
+                                : "text-amber-600 dark:text-amber-500",
+                            )}
+                          >
+                            {entry.approved ? "Approved" : "Pending"}
+                          </span>
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className="py-2 pr-4">
                           <p className="font-mono text-sm font-semibold">{entry.route}</p>
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className="py-2 pr-4">
                           <div className="flex items-center gap-2">
                             {entry.isExit ? (
                               <>
@@ -335,7 +343,7 @@ export default function RoutesOverview({ loaderData }: Route.ComponentProps) {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className="py-2 pr-4">
                           <Link
                             className="text-sm hover:underline"
                             to={`/machines/${entry.node.id}`}
@@ -343,7 +351,7 @@ export default function RoutesOverview({ loaderData }: Route.ComponentProps) {
                             {entry.node.givenName}
                           </Link>
                         </td>
-                        <td className="py-3">
+                        <td className="py-2">
                           {writable ? (
                             <Button
                               className="shrink-0"
