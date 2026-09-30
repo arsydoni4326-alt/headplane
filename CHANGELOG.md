@@ -1,3 +1,47 @@
+# v0.8.8-arsydoni4326-alt (September 30, 2026)
+
+## Phase 11: Advanced Features and Integrations
+
+### Plugin System
+
+- Added plugin API for third-party UI extensions
+- Plugin discovery and loading from configuration
+- TypeScript interfaces for plugin development
+- Example plugin demonstrating routes, widgets, and navigation
+- Documentation in `docs/development/plugins.md`
+
+### Multi-Instance Dashboard
+
+- Support for managing multiple Headscale instances from single UI
+- Instance configuration with encrypted credential storage
+- Instance switcher in navigation
+- Documentation in `app/routes/instances/README.md`
+
+### Routes Management
+
+- New routes management page with approve/delete functionality
+- Subnet routes management UI
+- Integration with Headscale routes API
+
+### DNS Improvements
+
+- CNAME record support in DNS management
+- Improved DNS record validation
+- Enhanced DNS record UI
+
+### Testing
+
+- Added plugin system tests (unit + component)
+- Added instance management tests
+- Added DNS record validation tests
+- Improved accessibility tests
+
+### Documentation
+
+- Added plugin development guide
+- Updated architecture documentation
+- Added multi-instance setup guide
+
 # Next
 
 # 0.8.7-arsydoni4326-alt (September 29, 2026)
