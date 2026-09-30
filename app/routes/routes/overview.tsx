@@ -11,11 +11,7 @@ import StatusCircle from "~/components/status-circle";
 import TableList from "~/components/table-list";
 import Text from "~/components/text";
 import Title from "~/components/title";
-import {
-  authContext,
-  headscaleLiveStoreContext,
-  requestApiContext,
-} from "~/server/context";
+import { authContext, headscaleLiveStoreContext, requestApiContext } from "~/server/context";
 import { nodesResource } from "~/server/headscale/live-store";
 import { Capabilities } from "~/server/web/roles";
 import { mapNodes, type PopulatedNode } from "~/utils/node-info";
@@ -136,15 +132,10 @@ export default function RoutesOverview({ loaderData }: Route.ComponentProps) {
                 <div className="flex min-w-0 items-center gap-3">
                   <StatusCircle isOnline={entry.approved} />
                   <div className="min-w-0">
-                    <p className="truncate font-mono text-sm font-semibold">
-                      {entry.route}
-                    </p>
+                    <p className="truncate font-mono text-sm font-semibold">{entry.route}</p>
                     <p className="truncate text-sm opacity-70">
                       {entry.isExit ? "Exit node · " : "Subnet route · "}
-                      <Link
-                        className="hover:underline"
-                        to={`/machines/${entry.node.id}`}
-                      >
+                      <Link className="hover:underline" to={`/machines/${entry.node.id}`}>
                         {entry.node.givenName}
                       </Link>
                     </p>
@@ -159,9 +150,7 @@ export default function RoutesOverview({ loaderData }: Route.ComponentProps) {
                     {entry.approved ? "Disable" : "Approve"}
                   </Button>
                 ) : (
-                  <Chip
-                    text={entry.approved ? "Approved" : "Pending approval"}
-                  />
+                  <Chip text={entry.approved ? "Approved" : "Pending approval"} />
                 )}
               </TableList.Item>
             ))}

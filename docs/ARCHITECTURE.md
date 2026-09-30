@@ -124,14 +124,14 @@ subdirectories. Feature changes must update the relevant pages here.
 
 ## Key Design Decisions
 
-| Decision | Rationale | Trade-off |
-| --- | --- | --- |
-| Closure-factory services, no DI framework | Explicit dependencies, testable without module mocking, hot-reloadable | No automatic lifecycle; wiring is manual in `createAppRuntime()` |
-| Single Node process for UI + server | Simple deployment, one config file, one port | Scaling is vertical only (acceptable for admin UI) |
-| SQLite via Drizzle for Headplane state | Zero-dependency persistence, matches "simple starts" tenet | Not multi-instance; fine for a single admin dashboard |
-| Browser SSH as WASM in the client | No server-side SSH relay; connections stay peer-to-peer | Large WASM payload; build complexity (Nix, certs) |
-| Separate Go agent for node details | Headscale API lacks some data; agent reads it from the Tailnet | Extra component to deploy (optional) |
-| Strict config validation at startup | Fail fast on misconfiguration (arktype schema, partial-then-merged validation) | Invalid but unused keys abort startup; deprecated escape hatches exist (`HEADPLANE_LOAD_ENV_OVERRIDES` deprecation notice, `headscale.config_strict` no-op) |
+| Decision                                  | Rationale                                                                      | Trade-off                                                                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Closure-factory services, no DI framework | Explicit dependencies, testable without module mocking, hot-reloadable         | No automatic lifecycle; wiring is manual in `createAppRuntime()`                                                                                            |
+| Single Node process for UI + server       | Simple deployment, one config file, one port                                   | Scaling is vertical only (acceptable for admin UI)                                                                                                          |
+| SQLite via Drizzle for Headplane state    | Zero-dependency persistence, matches "simple starts" tenet                     | Not multi-instance; fine for a single admin dashboard                                                                                                       |
+| Browser SSH as WASM in the client         | No server-side SSH relay; connections stay peer-to-peer                        | Large WASM payload; build complexity (Nix, certs)                                                                                                           |
+| Separate Go agent for node details        | Headscale API lacks some data; agent reads it from the Tailnet                 | Extra component to deploy (optional)                                                                                                                        |
+| Strict config validation at startup       | Fail fast on misconfiguration (arktype schema, partial-then-merged validation) | Invalid but unused keys abort startup; deprecated escape hatches exist (`HEADPLANE_LOAD_ENV_OVERRIDES` deprecation notice, `headscale.config_strict` no-op) |
 
 ## Constraints and Dependencies
 

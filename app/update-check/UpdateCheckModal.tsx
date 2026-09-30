@@ -1,8 +1,9 @@
 import { ExternalLink, RefreshCw } from "lucide-react";
 
 import Button from "~/components/button";
-import Link from "~/components/link";
 import Dialog, { DialogPanel } from "~/components/dialog";
+import Link from "~/components/link";
+
 import type { UpdateCheckResult } from "./types";
 import {
   dismissForSession,
@@ -24,30 +25,27 @@ export default function UpdateCheckModal() {
     !isRemindLaterActive();
 
   return (
-    <Dialog isOpen={isOpen} onOpenChange={(open) => {
-      if (!open) ctx.clearResults();
-    }}>
+    <Dialog
+      isOpen={isOpen}
+      onOpenChange={(open) => {
+        if (!open) ctx.clearResults();
+      }}
+    >
       <DialogPanel variant="unactionable">
         <div className="flex flex-col gap-4">
-          <h2 className="text-lg font-semibold">
-            Updates Available
-          </h2>
+          <h2 className="text-lg font-semibold">Updates Available</h2>
           <p className="text-sm text-mist-600 dark:text-mist-400">
             New commits are available for the following projects:
           </p>
 
           <div className="flex flex-col gap-3">
-            {ctx.headplaneUpdate && (
-              <UpdateCard result={ctx.headplaneUpdate} />
-            )}
-            {ctx.headscaleUpdate && (
-              <UpdateCard result={ctx.headscaleUpdate} />
-            )}
+            {ctx.headplaneUpdate && <UpdateCard result={ctx.headplaneUpdate} />}
+            {ctx.headscaleUpdate && <UpdateCard result={ctx.headscaleUpdate} />}
           </div>
 
           <p className="text-xs text-mist-500 dark:text-mist-400">
-            Checked automatically on page load. You can also check manually
-            from the user menu at any time.
+            Checked automatically on page load. You can also check manually from the user menu at
+            any time.
           </p>
 
           <div className="flex gap-2 pt-1">
@@ -108,11 +106,7 @@ function UpdateCard({ result }: { result: UpdateCheckResult }) {
             </span>
           </Link>
         ) : (
-          <Link
-            external
-            styled
-            to={`${result.repoUrl.replace(/\.git$/, "")}/releases`}
-          >
+          <Link external styled to={`${result.repoUrl.replace(/\.git$/, "")}/releases`}>
             <span className="flex items-center gap-1">
               <ExternalLink className="size-3" />
               Releases
@@ -130,24 +124,18 @@ function UpdateCard({ result }: { result: UpdateCheckResult }) {
  */
 export function UpdateCheckPill() {
   const ctx = useUpdateCheckContext();
-  const count =
-    (ctx.headplaneUpdate !== null ? 1 : 0) +
-    (ctx.headscaleUpdate !== null ? 1 : 0);
+  const count = (ctx.headplaneUpdate !== null ? 1 : 0) + (ctx.headscaleUpdate !== null ? 1 : 0);
 
   return (
     <button
       type="button"
       onClick={() => ctx.checkNow("manual")}
       disabled={ctx.isChecking}
-      className="inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-mist-100 dark:hover:bg-mist-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/40"
+      className="inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-mist-100 focus:ring-2 focus:ring-indigo-500/40 focus:outline-hidden dark:hover:bg-mist-800"
     >
-      <RefreshCw
-        className={`size-4 ${ctx.isChecking ? "animate-spin" : ""}`}
-      />
+      <RefreshCw className={`size-4 ${ctx.isChecking ? "animate-spin" : ""}`} />
       <span className="flex-1 text-left">
-        {ctx.isChecking
-          ? "Checking for updates..."
-          : "Check for Updates"}
+        {ctx.isChecking ? "Checking for updates..." : "Check for Updates"}
       </span>
       {count > 0 && (
         <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-500 text-xs font-semibold text-white">

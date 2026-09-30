@@ -14,6 +14,7 @@ import ToastProvider from "~/utils/toast-provider";
 
 import type { Route } from "./+types/root";
 import { ErrorBanner } from "./components/error-banner";
+import { PluginProvider } from "./plugins";
 import { headscaleContext } from "./server/context";
 import { UpdateCheckModal, UpdateCheckProvider } from "./update-check";
 import { useUpdateCheckContext } from "./update-check/UpdateCheckProvider";
@@ -81,33 +82,35 @@ export function Layout({ children }: { readonly children: React.ReactNode }) {
   // are not a part of the normal React tree.
   return (
     <LiveDataProvider>
-      <UpdateCheckProvider>
-        <VersionCheckRunner versionInfo={loaderData?.versionInfo} />
-        <html
-          lang="en"
-          className={
-            loaderData?.colorScheme === "dark"
-              ? "dark"
-              : loaderData?.colorScheme === "light"
-                ? "light"
-                : ""
-          }
-        >
-          <head>
-            <meta charSet="utf-8" />
-            <meta content="width=device-width, initial-scale=1" name="viewport" />
-            <Meta />
-            <Links />
-            <link href={`${__PREFIX__}/favicon.ico`} rel="icon" />
-          </head>
-          <body className="w-full overflow-x-hidden overscroll-none dark:bg-mist-900 dark:text-mist-50">
-            {children}
-            <ToastProvider />
-            <ScrollRestoration />
-            <Scripts />
-          </body>
-        </html>
-      </UpdateCheckProvider>
+      <PluginProvider>
+        <UpdateCheckProvider>
+          <VersionCheckRunner versionInfo={loaderData?.versionInfo} />
+          <html
+            lang="en"
+            className={
+              loaderData?.colorScheme === "dark"
+                ? "dark"
+                : loaderData?.colorScheme === "light"
+                  ? "light"
+                  : ""
+            }
+          >
+            <head>
+              <meta charSet="utf-8" />
+              <meta content="width=device-width, initial-scale=1" name="viewport" />
+              <Meta />
+              <Links />
+              <link href={`${__PREFIX__}/favicon.ico`} rel="icon" />
+            </head>
+            <body className="w-full overflow-x-hidden overscroll-none dark:bg-mist-900 dark:text-mist-50">
+              {children}
+              <ToastProvider />
+              <ScrollRestoration />
+              <Scripts />
+            </body>
+          </html>
+        </UpdateCheckProvider>
+      </PluginProvider>
     </LiveDataProvider>
   );
 }

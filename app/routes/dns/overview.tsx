@@ -73,8 +73,8 @@ export default function Page() {
       )}
       {data.extraRecordsPath ? (
         <Notice>
-          DNS records are managed via the <Code>{data.extraRecordsPath}</Code> file
-          (<Code>dns.extra_records_path</Code>). Changes made here are written to that file and
+          DNS records are managed via the <Code>{data.extraRecordsPath}</Code> file (
+          <Code>dns.extra_records_path</Code>). Changes made here are written to that file and
           picked up by Headscale automatically.
         </Notice>
       ) : undefined}

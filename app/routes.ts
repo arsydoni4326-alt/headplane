@@ -35,6 +35,11 @@ export default [
     route("/topology", "routes/topology/overview.tsx"),
     route("/audit", "routes/audit/overview.tsx"),
 
+    ...prefix("/instances", [
+      index("routes/instances/overview.tsx"),
+      route("/new", "routes/instances/new.tsx"),
+    ]),
+
     ...prefix("/settings", [
       index("routes/settings/overview.tsx"),
       route("/auth-keys", "routes/settings/auth-keys/overview.tsx"),

@@ -35,9 +35,9 @@ test.describe("accessibility", () => {
     // Test empty states by navigating to routes that might show them
     // The machines page with no machines should show an empty state
     await authedPage.goto("/admin/machines");
-    
+
     const results = await new AxeBuilder({ page: authedPage }).analyze();
-    
+
     const blocking = results.violations.filter(
       (violation) => violation.impact === "critical" || violation.impact === "serious",
     );
@@ -53,10 +53,10 @@ test.describe("accessibility", () => {
   test("loading states are accessible", async ({ authedPage }) => {
     // Loading states should have proper ARIA attributes
     await authedPage.goto("/admin/machines");
-    
+
     // Check for any loading indicators with role="status"
     const loadingIndicators = authedPage.locator('[role="status"]');
-    
+
     // If loading indicators are present, verify they have aria-live
     const count = await loadingIndicators.count();
     if (count > 0) {
@@ -69,21 +69,21 @@ test.describe("accessibility", () => {
 
   test("icon-only buttons have accessible names", async ({ authedPage }) => {
     await authedPage.goto("/admin/machines");
-    
+
     // Find all buttons
     const buttons = authedPage.locator("button");
     const count = await buttons.count();
-    
+
     for (let i = 0; i < count; i++) {
       const button = buttons.nth(i);
       const textContent = await button.textContent();
-      
+
       // If button has no text content, it should have aria-label
       if (!textContent || textContent.trim() === "") {
         const ariaLabel = await button.getAttribute("aria-label");
         const ariaLabelledBy = await button.getAttribute("aria-labelledby");
         const srOnly = await button.locator(".sr-only").count();
-        
+
         expect(
           ariaLabel || ariaLabelledBy || srOnly > 0,
           `Button at index ${i} has no text and no accessible name`,

@@ -95,8 +95,8 @@ export default function AddRecord({ records }: Props) {
           />
           {isDuplicate ? (
             <p className="text-sm opacity-50">
-              A record with the domain name <Code>{name}</Code> and value <Code>{ip}</Code>{" "}
-              already exists.
+              A record with the domain name <Code>{name}</Code> and value <Code>{ip}</Code> already
+              exists.
             </p>
           ) : undefined}
         </div>
