@@ -1,0 +1,29 @@
+node_modules
+/.react-router
+/.cache
+/build
+/test
+.env
+/app/hp_ssh.wasm
+/app/wasm_exec.js
+
+/public/hp_ssh.wasm
+/public/wasm_exec.js
+
+/docs/.vitepress/dist/
+/docs/.vitepress/cache/
+/.direnv
+/vendor
+.agents
+session.md
+
+# Playwright e2e runtime state (written by tests/e2e/global-setup.ts)
+/tests/e2e/.e2e-state.json
+/tests/e2e/.headplane-e2e.yaml
+/tests/e2e/.headscale-e2e.yaml
+/tests/e2e/data/
+
+# Playwright test artifacts
+/test-results/
+/playwright-report/
+/blob-report/
