@@ -1,4 +1,4 @@
-# Next
+# 0.8.12-arsydoni4326-alt (October 1, 2026)
 
 ## Fixes
 
