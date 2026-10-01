@@ -577,7 +577,7 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
       path: __PREFIX__,
     });
 
-    return cookie.serialize("", { expires: new Date(0) });
+    return cookie.serialize("", { expires: new Date(0), maxAge: 0 });
   }
 
   async function findOrCreateUser(

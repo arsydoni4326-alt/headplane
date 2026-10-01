@@ -27,3 +27,19 @@ accessing Headplane:
 
 - Serving over HTTPS: `cookie_secure` should be enabled (`true`).
 - Serving over HTTP: `cookie_secure` should be disabled (`false`).
+
+### "Session cookie is empty" or repeated login errors
+
+An empty `_hp_auth` cookie is not a valid session. It can remain after a logout
+or failed session cleanup if the browser received a cookie deletion response
+with a positive `Max-Age`.
+
+1. Upgrade Headplane to a version that deletes sessions with `Max-Age=0`.
+2. Clear the `_hp_auth` cookie for the Headplane domain, then retry the login.
+3. In browser developer tools, verify that the logout or invalid-session
+   response sends `Set-Cookie` with both `Max-Age=0` and an expired `Expires`
+   value.
+
+`cookie_secure: true` is still required when the public Headplane URL uses
+HTTPS, including when TLS terminates at a reverse proxy. It controls whether a
+cookie may be sent over HTTP; it does not by itself explain an empty cookie.

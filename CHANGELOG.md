@@ -1,3 +1,11 @@
+# Next
+
+## Fixes
+
+- Fixed logout and invalid-session cleanup leaving an empty session cookie in
+  browsers. Headplane now explicitly sends `Max-Age=0` when deleting the
+  cookie, preventing repeated `Session cookie is empty` errors.
+
 # 0.8.11-arsydoni4326-alt (September 30, 2026)
 
 ## Changes
@@ -24,6 +32,7 @@
 ## Technical Notes
 
 This release merges upstream changes while preserving all local features including:
+
 - Phase 11 advanced features (plugin system, multi-instance dashboard)
 - Comprehensive testing infrastructure (Playwright, accessibility, Lighthouse)
 - Enhanced routes management and DNS improvements

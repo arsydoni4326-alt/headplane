@@ -1,12 +1,24 @@
-import { headscaleLiveStoreContext, requestApiContext } from "~/server/context";
+import { authContext, headscaleLiveStoreContext, requestApiContext } from "~/server/context";
 import { nodesResource, usersResource } from "~/server/headscale/live-store";
 import log from "~/utils/log";
 
 import type { Route } from "./+types/live";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
+  const auth = context.get(authContext);
   const getRequestApi = context.get(requestApiContext);
   const headscaleLiveStore = context.get(headscaleLiveStoreContext);
+
+  try {
+    await auth.require(request);
+  } catch {
+    return new Response(null, {
+      status: 401,
+      headers: {
+        "Set-Cookie": await auth.destroySession(request),
+      },
+    });
+  }
 
   const { api } = await getRequestApi(request);
 
