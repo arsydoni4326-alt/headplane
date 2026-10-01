@@ -243,6 +243,13 @@ describe("session round-trip", () => {
 
     await expect(auth.require(request)).rejects.toThrow();
   });
+
+  test("destroySession expires the cookie immediately", async () => {
+    const cookieHeader = await auth.destroySession();
+
+    expect(cookieHeader).toContain("Max-Age=0");
+    expect(cookieHeader).toContain("Expires=Thu, 01 Jan 1970 00:00:00 GMT");
+  });
 });
 
 describe("proxy authentication", () => {
