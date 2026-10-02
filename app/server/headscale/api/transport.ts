@@ -45,6 +45,13 @@ export interface Transport {
    */
   getPublic<T>(path: `/${string}`, query?: Record<string, unknown>): Promise<T>;
 
+  /**
+   * Send an unauthenticated POST against the server root
+   * (e.g. `/api/v1/headplane/login`). Returns parsed JSON.
+   * Throws a React Router `data()` with the API error on statusCode >= 400.
+   */
+  postPublic<T>(path: `/${string}`, body?: Record<string, unknown>): Promise<T>;
+
   /** True if `GET /health` returns 200. Never throws. */
   health(): Promise<boolean>;
 
@@ -159,6 +166,37 @@ export async function createTransport(opts: TransportOptions): Promise<Transport
         throw data(
           {
             requestUrl: `GET ${path}`,
+            statusCode: res.statusCode,
+            rawData,
+            data: jsonData,
+          } satisfies HeadscaleAPIError,
+          { status: 502, statusText: "Bad Gateway" },
+        );
+      }
+      return res.body.json() as Promise<T>;
+    },
+
+    async postPublic<T>(path: `/${string}`, body?: Record<string, unknown>): Promise<T> {
+      const options: Partial<Dispatcher.RequestOptions> & { method: string } = {
+        method: "POST",
+      };
+      if (body) {
+        options.body = JSON.stringify(body);
+        options.headers = { "Content-Type": "application/json" };
+      }
+      const res = await rawRequest(path, options);
+      if (res.statusCode >= 400) {
+        const rawData = await res.body.text();
+        const jsonData = (() => {
+          try {
+            return JSON.parse(rawData) as Record<string, unknown>;
+          } catch {
+            return null;
+          }
+        })();
+        throw data(
+          {
+            requestUrl: `POST ${path}`,
             statusCode: res.statusCode,
             rawData,
             data: jsonData,

@@ -80,6 +80,8 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
   const { isCookieSecureEnabled, isOidcConnectorEnabled, oidcErrorCodes, urlState } = loaderData;
 
   const [showCookieWarning, setShowCookieWarning] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<"api_key" | "password">("password");
+  const [showPassword, setShowPassword] = useState(false);
   const [params] = useSearchParams();
   const { pause } = useLiveData();
 
@@ -146,20 +148,68 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
         ) : undefined}
         <Card className="m-4 max-w-md sm:m-0">
           <Card.Title>Welcome to Headplane</Card.Title>
+          
+          {/* Login method toggle */}
+          <div className="mb-4 flex gap-2">
+            <Button
+              type="button"
+              variant={loginMethod === "password" ? "heavy" : "light"}
+              onClick={() => setLoginMethod("password")}
+              className="flex-1"
+            >
+              Password
+            </Button>
+            <Button
+              type="button"
+              variant={loginMethod === "api_key" ? "heavy" : "light"}
+              onClick={() => setLoginMethod("api_key")}
+              className="flex-1"
+            >
+              API Key
+            </Button>
+          </div>
+
           <Form method="POST">
-            <Card.Text>
-              Enter an API key to authenticate with Headplane. You can generate one by running{" "}
-              <Code>headscale apikeys create</Code> in your terminal.
-            </Card.Text>
-            <Input
-              className="mt-8 mb-2"
-              required
-              label="API Key"
-              labelHidden
-              name="api_key"
-              placeholder="API Key"
-              type="password"
-            />
+            {loginMethod === "password" ? (
+              <>
+                <Card.Text>
+                  Enter the password configured for Headplane to sign in.
+                </Card.Text>
+                <div className="relative mt-8 mb-2">
+                  <Input
+                    required
+                    label="Password"
+                    labelHidden
+                    name="password"
+                    placeholder="Password"
+                    type={showPassword ? "text" : "password"}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <Card.Text>
+                  Enter an API key to authenticate with Headplane. You can generate one by running{" "}
+                  <Code>headscale apikeys create</Code> in your terminal.
+                </Card.Text>
+                <Input
+                  className="mt-8 mb-2"
+                  required
+                  label="API Key"
+                  labelHidden
+                  name="api_key"
+                  placeholder="API Key"
+                  type="password"
+                />
+              </>
+            )}
             {actionData?.success === false ? (
               <Card.Text className="mb-2 text-sm text-red-600 dark:text-red-300">
                 {actionData.message}
