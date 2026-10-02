@@ -44,6 +44,11 @@ export interface Headscale {
    * `check=true`) are forwarded verbatim.
    */
   updateCheck(query?: Record<string, unknown>): Promise<UpdateCheckResponse>;
+  /**
+   * Authenticate with password-based login (Headplane-specific).
+   * Calls the unauthenticated `/api/v1/headplane/login` endpoint.
+   */
+  passwordLogin(password: string): Promise<PasswordLoginResponse>;
   /** Build an API client bound to a specific Headscale API key. */
   client(apiKey: string): HeadscaleClient;
   /** Stop background work and close the underlying HTTP agent. */
@@ -79,6 +84,15 @@ export interface UpdateCheckResponse {
     url?: string;
   };
   error?: string;
+}
+
+/**
+ * Response shape of the unauthenticated `POST /api/v1/headplane/login`
+ * endpoint. Returns a session token and expiry on successful authentication.
+ */
+export interface PasswordLoginResponse {
+  token: string;
+  expires_at: number;
 }
 
 export interface CreateHeadscaleOptions {
@@ -174,6 +188,8 @@ export async function createHeadscale(opts: CreateHeadscaleOptions): Promise<Hea
     },
     health: () => transport.health(),
     updateCheck: (query) => transport.getPublic<UpdateCheckResponse>("/api/v1/update-check", query),
+    passwordLogin: (password) =>
+      transport.postPublic<PasswordLoginResponse>("/api/v1/headplane/login", { password }),
     client(apiKey) {
       return {
         nodes: makeNodeApi(transport, capabilities, apiKey),

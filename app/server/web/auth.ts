@@ -18,6 +18,11 @@ export type Principal =
       displayName: string;
       apiKey: string;
     }
+  | {
+      kind: "password";
+      sessionId: string;
+      token: string;
+    }
   | UserPrincipal;
 
 export type UserPrincipal = {
@@ -52,6 +57,7 @@ interface ProxyAuthOptions {
 interface CookiePayload {
   sid: string;
   api_key?: string;
+  password_token?: string;
   profile?: {
     name: string;
     email?: string;
@@ -85,6 +91,7 @@ export interface AuthService {
   ): Promise<string>;
 
   createApiKeySession(apiKey: string, displayName: string, maxAge: number): Promise<string>;
+  createPasswordSession(token: string, maxAge: number): Promise<string>;
   destroySession(request?: Request): Promise<string>;
   findOrCreateUser(
     subject: string,
@@ -464,6 +471,18 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
       };
     }
 
+    if (session.kind === "password") {
+      if (!payload.password_token) {
+        throw new Error("Password session missing credential");
+      }
+
+      return {
+        kind: "password",
+        sessionId: session.id,
+        token: payload.password_token,
+      };
+    }
+
     if (!session.user_id) {
       throw new Error("OIDC session missing user_id");
     }
@@ -493,7 +512,7 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
   }
 
   function can(principal: Principal, capabilities: Capabilities): boolean {
-    if (principal.kind === "api_key") {
+    if (principal.kind === "api_key" || principal.kind === "password") {
       return true;
     }
 
@@ -502,7 +521,7 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
   }
 
   function canManageNode(principal: Principal, node: Machine): boolean {
-    if (principal.kind === "api_key") {
+    if (principal.kind === "api_key" || principal.kind === "password") {
       return true;
     }
 
@@ -518,6 +537,10 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
   function getHeadscaleApiKey(principal: Principal): string {
     if (principal.kind === "api_key") {
       return principal.apiKey;
+    }
+
+    if (principal.kind === "password") {
+      return principal.token;
     }
 
     if (!opts.headscaleApiKey) {
@@ -560,6 +583,17 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
     });
 
     return encodeCookie({ sid, api_key: apiKey }, Math.floor(maxAge / 1000));
+  }
+
+  async function createPasswordSession(token: string, maxAge: number): Promise<string> {
+    const sid = ulid();
+    await opts.db.insert(authSessions).values({
+      id: sid,
+      kind: "password",
+      expires_at: new Date(Date.now() + maxAge),
+    });
+
+    return encodeCookie({ sid, password_token: token }, Math.floor(maxAge / 1000));
   }
 
   async function destroySession(request?: Request): Promise<string> {
@@ -781,6 +815,7 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
     getHeadscaleApiKey,
     createOidcSession,
     createApiKeySession,
+    createPasswordSession,
     destroySession,
     findOrCreateUser,
     linkHeadscaleUser,

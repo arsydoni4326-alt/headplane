@@ -12,16 +12,69 @@ export async function loginAction({ request, context }: Route.LoaderArgs) {
 
   const formData = await request.formData();
   const apiKey = formData.has("api_key") ? String(formData.get("api_key")) : undefined;
+  const password = formData.has("password") ? String(formData.get("password")) : undefined;
 
+  // Password login flow
+  if (password !== undefined) {
+    if (password.length === 0) {
+      log.warn("auth", "Request made with empty password");
+      return {
+        success: false,
+        message: "Password cannot be empty. Please enter a valid password.",
+      };
+    }
+
+    try {
+      const response = await headscale.passwordLogin(password);
+      const maxAge = (response.expires_at - Math.floor(Date.now() / 1000)) * 1000;
+
+      return redirect("/machines", {
+        headers: {
+          "Set-Cookie": await auth.createPasswordSession(response.token, maxAge),
+        },
+      });
+    } catch (error) {
+      if (isDataWithApiError(error)) {
+        const apiError = error.data;
+        if (apiError.statusCode === 401) {
+          return {
+            success: false,
+            message: "Invalid password",
+          };
+        }
+        if (apiError.statusCode === 429) {
+          return {
+            success: false,
+            message: "Too many failed attempts. Please try again later.",
+          };
+        }
+        if (apiError.statusCode === 503) {
+          return {
+            success: false,
+            message: "Password authentication is not configured on the server",
+          };
+        }
+      }
+
+      log.error("auth", "Error while validating password: %s", error);
+      log.debug("auth", "Error details: %o", error);
+      return {
+        success: false,
+        message: "Error while validating password (see logs for details)",
+      };
+    }
+  }
+
+  // API key login flow (existing logic)
   if (apiKey === undefined) {
-    log.warn("auth", "Request made without API key");
+    log.warn("auth", "Request made without API key or password");
     log.warn(
       "auth",
       "If this is unexpected, ensure your reverse proxy (if applicable) is configured correctly",
     );
     return {
       success: false,
-      message: "Missing API key. Please enter your API key.",
+      message: "Missing API key or password. Please enter your credentials.",
     };
   }
 
