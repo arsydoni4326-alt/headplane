@@ -1,5 +1,13 @@
 # Next
 
+# 0.8.14-arsydoni4326-alt (October 2, 2026)
+
+## Changes
+
+- Synchronized with upstream Headscale main branch, incorporating latest improvements
+- Updated Vitest test infrastructure to support latest API changes
+- Merged upstream fix for removed Vitest sequential suite API
+
 # 0.8.12-arsydoni4326-alt (October 1, 2026)
 
 ## Fixes
