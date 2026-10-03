@@ -57,7 +57,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
           subject: principal.user.subject,
           username: principal.profile.username,
         }
-      : { name: principal.displayName, subject: "api_key" };
+      : principal.kind === "password"
+        ? { name: principal.username, subject: "password", username: principal.username }
+        : { name: principal.displayName, subject: "api_key" };
 
     // MARK: The session should stay valid if Headscale isn't healthy
     const isHealthy = await headscale.health();
@@ -68,7 +70,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
         if (isDataUnauthorizedError(error)) {
           const displayName = isUserPrincipal(principal)
             ? principal.profile.name
-            : principal.displayName;
+            : principal.kind === "password"
+              ? principal.username
+              : principal.displayName;
           log.warn("auth", "Logging out %s due to expired API key", displayName);
           return redirect("/login", {
             headers: {

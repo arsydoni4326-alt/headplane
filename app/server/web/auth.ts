@@ -22,6 +22,7 @@ export type Principal =
       kind: "password";
       sessionId: string;
       token: string;
+      username: string;
     }
   | UserPrincipal;
 
@@ -58,6 +59,7 @@ interface CookiePayload {
   sid: string;
   api_key?: string;
   password_token?: string;
+  password_username?: string;
   profile?: {
     name: string;
     email?: string;
@@ -91,7 +93,7 @@ export interface AuthService {
   ): Promise<string>;
 
   createApiKeySession(apiKey: string, displayName: string, maxAge: number): Promise<string>;
-  createPasswordSession(token: string, maxAge: number): Promise<string>;
+  createPasswordSession(token: string, username: string, maxAge: number): Promise<string>;
   destroySession(request?: Request): Promise<string>;
   findOrCreateUser(
     subject: string,
@@ -480,6 +482,7 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
         kind: "password",
         sessionId: session.id,
         token: payload.password_token,
+        username: payload.password_username ?? "unknown",
       };
     }
 
@@ -585,7 +588,11 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
     return encodeCookie({ sid, api_key: apiKey }, Math.floor(maxAge / 1000));
   }
 
-  async function createPasswordSession(token: string, maxAge: number): Promise<string> {
+  async function createPasswordSession(
+    token: string,
+    username: string,
+    maxAge: number,
+  ): Promise<string> {
     const sid = ulid();
     await opts.db.insert(authSessions).values({
       id: sid,
@@ -593,7 +600,10 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
       expires_at: new Date(Date.now() + maxAge),
     });
 
-    return encodeCookie({ sid, password_token: token }, Math.floor(maxAge / 1000));
+    return encodeCookie(
+      { sid, password_token: token, password_username: username },
+      Math.floor(maxAge / 1000),
+    );
   }
 
   async function destroySession(request?: Request): Promise<string> {
