@@ -13,6 +13,7 @@ import {
   Route,
   Server,
   Settings,
+  ShieldAlert,
   Sun,
   Users,
 } from "lucide-react";
@@ -43,6 +44,7 @@ export interface HeaderProps {
     policy: boolean;
     settings: boolean;
     audit: boolean;
+    admin: boolean;
   };
   configAvailable: boolean;
 }
@@ -57,6 +59,7 @@ const tabs = [
   { to: "/derp", icon: Radio, label: "DERP", key: "audit" },
   { to: "/instances", icon: Server, label: "Instances", key: "settings" },
   { to: "/audit", icon: History, label: "Audit", key: "audit" },
+  { to: "/admin/users", icon: ShieldAlert, label: "Admin", key: "admin" },
   { to: "/settings", icon: Settings, label: "Settings", key: "settings" },
 ] as const;
 

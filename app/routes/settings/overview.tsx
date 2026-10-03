@@ -28,11 +28,24 @@ export default function Page({
       <div className="flex w-full flex-col sm:w-2/3">
         <h1 className="mb-4 text-2xl font-medium">Settings</h1>
         <p>
-          The settings page is still under construction. As I'm able to add more features, I'll be
-          adding them here. If you require any features, feel free to open an issue on the GitHub
-          repository.
+          Manage your Headplane and Headscale configuration. Customize your preferences, manage
+          authentication, and configure integrations.
         </p>
       </div>
+
+      <div className="flex w-full flex-col sm:w-2/3">
+        <h1 className="mb-4 text-2xl font-medium">Profile & Preferences</h1>
+        <p>
+          Manage your profile settings, save your Headscale API key for reuse across sessions, and
+          customize your Headplane experience with theme preferences.
+        </p>
+      </div>
+      <Link to="/settings/profile">
+        <div className="flex items-center text-lg font-medium">
+          Profile & Settings
+          <ArrowRight className="ml-2 h-5 w-5" />
+        </div>
+      </Link>
 
       <Card className="w-full sm:w-2/3" variant="flat">
         <Card.Title>Server</Card.Title>

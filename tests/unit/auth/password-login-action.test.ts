@@ -2,9 +2,10 @@ import { describe, expect, test, vi } from "vitest";
 
 import { authContext, headscaleContext } from "~/server/context";
 
-// Helper to create a mock FormData with password
-function mockPasswordFormData(password: string): FormData {
+// Helper to create a mock FormData with username and password
+function mockPasswordFormData(username: string, password: string): FormData {
   const formData = new FormData();
+  formData.set("username", username);
   formData.set("password", password);
   return formData;
 }
@@ -51,9 +52,9 @@ vi.mock("~/utils/log", () => ({
 }));
 
 describe("Password login action", () => {
-  test("returns error when password is empty string", async () => {
+  test("returns error when username is empty string", async () => {
     const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("");
+    const formData = mockPasswordFormData("", "some-password");
     const request = mockRequest(formData);
 
     const mockContext = createMockContext({
@@ -68,16 +69,37 @@ describe("Password login action", () => {
     } as any)) as LoginResult;
 
     expect(result.success).toBe(false);
-    expect(result.message).toContain("empty");
+    expect(result.message).toContain("Username cannot be empty");
   });
 
-  test("returns error when password is invalid (401)", async () => {
+  test("returns error when password is empty string", async () => {
     const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("wrong-password");
+    const formData = mockPasswordFormData("testuser", "");
+    const request = mockRequest(formData);
+
+    const mockContext = createMockContext({
+      headscale: { passwordLogin: vi.fn() },
+      auth: { createPasswordSession: vi.fn() },
+    });
+
+    const result = (await loginAction({
+      request,
+      context: mockContext,
+      params: {},
+    } as any)) as LoginResult;
+
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("Password cannot be empty");
+  });
+
+  test("returns error when credentials are invalid (401)", async () => {
+    const { loginAction } = await import("~/routes/auth/login/action");
+    const formData = mockPasswordFormData("testuser", "wrong-password");
     const request = mockRequest(formData);
 
     const mockPasswordLogin = vi.fn().mockRejectedValue({
       data: {
+        requestUrl: "POST /api/v1/headplane/login",
         statusCode: 401,
         rawData: "Unauthorized",
         data: null,
@@ -101,11 +123,12 @@ describe("Password login action", () => {
 
   test("returns error when rate limited (429)", async () => {
     const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("some-password");
+    const formData = mockPasswordFormData("testuser", "some-password");
     const request = mockRequest(formData);
 
     const mockPasswordLogin = vi.fn().mockRejectedValue({
       data: {
+        requestUrl: "POST /api/v1/headplane/login",
         statusCode: 429,
         rawData: "Too Many Requests",
         data: null,
@@ -129,11 +152,12 @@ describe("Password login action", () => {
 
   test("returns error when password auth not configured (503)", async () => {
     const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("some-password");
+    const formData = mockPasswordFormData("testuser", "some-password");
     const request = mockRequest(formData);
 
     const mockPasswordLogin = vi.fn().mockRejectedValue({
       data: {
+        requestUrl: "POST /api/v1/headplane/login",
         statusCode: 503,
         rawData: "Service Unavailable",
         data: null,
@@ -155,14 +179,15 @@ describe("Password login action", () => {
     expect(result.message).toContain("not configured");
   });
 
-  test("successfully logs in with valid password", async () => {
+  test("successfully logs in with valid username and password", async () => {
     const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("valid-password");
+    const formData = mockPasswordFormData("testuser", "valid-password");
     const request = mockRequest(formData);
 
     const futureTimestamp = Math.floor(Date.now() / 1000) + 86400;
     const mockPasswordLogin = vi.fn().mockResolvedValue({
       token: "mock-session-token-12345",
+      username: "testuser",
       expires_at: futureTimestamp,
     });
 
@@ -180,7 +205,11 @@ describe("Password login action", () => {
     } as any);
 
     expect(result).toBeDefined();
-    expect(mockPasswordLogin).toHaveBeenCalledWith("valid-password");
-    expect(mockCreateSession).toHaveBeenCalled();
+    expect(mockPasswordLogin).toHaveBeenCalledWith("testuser", "valid-password");
+    expect(mockCreateSession).toHaveBeenCalledWith(
+      "mock-session-token-12345",
+      "testuser",
+      expect.any(Number),
+    );
   });
 });
