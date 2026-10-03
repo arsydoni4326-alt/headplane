@@ -12,10 +12,19 @@ export async function loginAction({ request, context }: Route.LoaderArgs) {
 
   const formData = await request.formData();
   const apiKey = formData.has("api_key") ? String(formData.get("api_key")) : undefined;
+  const username = formData.has("username") ? String(formData.get("username")) : undefined;
   const password = formData.has("password") ? String(formData.get("password")) : undefined;
 
   // Password login flow
   if (password !== undefined) {
+    if (!username || username.length === 0) {
+      log.warn("auth", "Request made with empty username");
+      return {
+        success: false,
+        message: "Username cannot be empty. Please enter a valid username.",
+      };
+    }
+
     if (password.length === 0) {
       log.warn("auth", "Request made with empty password");
       return {
@@ -25,12 +34,12 @@ export async function loginAction({ request, context }: Route.LoaderArgs) {
     }
 
     try {
-      const response = await headscale.passwordLogin(password);
+      const response = await headscale.passwordLogin(username, password);
       const maxAge = (response.expires_at - Math.floor(Date.now() / 1000)) * 1000;
 
       return redirect("/machines", {
         headers: {
-          "Set-Cookie": await auth.createPasswordSession(response.token, maxAge),
+          "Set-Cookie": await auth.createPasswordSession(response.token, response.username, maxAge),
         },
       });
     } catch (error) {

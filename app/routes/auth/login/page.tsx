@@ -148,7 +148,7 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
         ) : undefined}
         <Card className="m-4 max-w-md sm:m-0">
           <Card.Title>Welcome to Headplane</Card.Title>
-          
+
           {/* Login method toggle */}
           <div className="mb-4 flex gap-2">
             <Button
@@ -172,10 +172,18 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
           <Form method="POST">
             {loginMethod === "password" ? (
               <>
-                <Card.Text>
-                  Enter the password configured for Headplane to sign in.
-                </Card.Text>
-                <div className="relative mt-8 mb-2">
+                <Card.Text>Enter your username and password to sign in.</Card.Text>
+                <Input
+                  className="mt-8 mb-2"
+                  required
+                  label="Username"
+                  labelHidden
+                  name="username"
+                  placeholder="Username"
+                  type="text"
+                  autoComplete="username"
+                />
+                <div className="relative mb-2">
                   <Input
                     required
                     label="Password"
@@ -183,11 +191,12 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
                     name="password"
                     placeholder="Password"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>

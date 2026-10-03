@@ -410,6 +410,7 @@ describe("authorization", () => {
       kind: "password",
       sessionId: "test",
       token: "session-token",
+      username: "testuser",
     };
     expect(auth.can(passwordPrincipal, Capabilities.write_machines)).toBe(true);
     expect(auth.can(passwordPrincipal, Capabilities.owner)).toBe(true);
@@ -420,6 +421,7 @@ describe("authorization", () => {
       kind: "password",
       sessionId: "test",
       token: "session-token",
+      username: "testuser",
     };
     expect(auth.canManageNode(passwordPrincipal, machine)).toBe(true);
   });
@@ -429,6 +431,7 @@ describe("authorization", () => {
       kind: "password",
       sessionId: "test",
       token: "session-token-12345",
+      username: "testuser",
     };
     expect(auth.getHeadscaleApiKey(passwordPrincipal)).toBe("session-token-12345");
   });
