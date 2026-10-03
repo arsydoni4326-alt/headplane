@@ -40,6 +40,8 @@ export default [
       route("/new", "routes/instances/new.tsx"),
     ]),
 
+    ...prefix("/admin", [route("/users", "routes/admin/users/route.tsx")]),
+
     ...prefix("/settings", [
       index("routes/settings/overview.tsx"),
       route("/profile", "routes/settings/profile.tsx"),
