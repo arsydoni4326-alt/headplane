@@ -1,147 +1,131 @@
 import { Eye, EyeOff, Save } from "lucide-react";
 import { useState } from "react";
-import { Form, useActionData } from "react-router";
+import { Form, useFetcher } from "react-router";
 
 import Button from "~/components/button";
 import Card from "~/components/card";
 import Input from "~/components/input";
 import Notice from "~/components/notice";
 import PageError from "~/components/page-error";
-import Select from "~/components/select";
-import { appConfigContext, authContext } from "~/server/context";
+import Text from "~/components/text";
+import Title from "~/components/title";
+import { authContext, headscaleContext } from "~/server/context";
+import { isUserPrincipal } from "~/server/web/auth";
+import log from "~/utils/log";
 
 import type { Route } from "./+types/profile";
 
-interface HeadplaneSettings {
-  apiKey?: string;
-  theme: "light" | "dark" | "system";
-  profileName?: string;
-}
-
 export async function loader({ request, context }: Route.LoaderArgs) {
   const auth = context.get(authContext);
-  const config = context.get(appConfigContext);
+  const headscale = context.get(headscaleContext);
+
   const principal = await auth.require(request);
 
-  // Only password-authenticated users can access settings
-  if (principal.kind !== "password") {
-    throw new Response("Settings are only available for password-authenticated users", {
-      status: 403,
-    });
-  }
+  // Get username from session
+  const username = isUserPrincipal(principal)
+    ? principal.profile.username || principal.profile.name
+    : principal.displayName;
 
-  // Fetch settings from backend
-  const sessionToken = principal.token;
-  const headscaleUrl = config.headscale.url;
-
+  // Fetch current settings from backend
   try {
-    const response = await fetch(`${headscaleUrl}/api/v1/headplane/settings`, {
+    const baseUrl = headscale.url;
+    const token = await auth.getSessionToken(request);
+
+    const response = await fetch(`${baseUrl}/api/v1/headplane/settings`, {
       headers: {
-        Authorization: `Bearer ${sessionToken}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    if (response.ok) {
-      const settings = (await response.json()) as HeadplaneSettings;
-      return { settings, sessionToken };
-    }
-
-    // Settings not found - return defaults
-    if (response.status === 404) {
+    if (!response.ok) {
+      log.error("settings", "Failed to fetch settings: %s", response.statusText);
       return {
-        settings: { theme: "system" as const },
-        sessionToken,
+        username,
+        settings: { apiKey: "", theme: "light", profileName: "" },
+        error: "Failed to load settings",
       };
     }
 
-    throw new Error(`Failed to load settings: ${response.statusText}`);
+    const settings = await response.json();
+    return { username, settings, error: null };
   } catch (error) {
-    console.error("Error loading settings:", error);
+    log.error("settings", "Error fetching settings: %s", String(error));
     return {
-      settings: { theme: "system" as const },
-      sessionToken,
+      username,
+      settings: { apiKey: "", theme: "light", profileName: "" },
+      error: "Failed to connect to server",
     };
   }
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
   const auth = context.get(authContext);
-  const config = context.get(appConfigContext);
-  const principal = await auth.require(request);
+  const headscale = context.get(headscaleContext);
 
-  if (principal.kind !== "password") {
-    return {
-      success: false,
-      message: "Settings are only available for password-authenticated users",
-    };
-  }
+  await auth.require(request);
 
   const formData = await request.formData();
-  const actionType = formData.get("_action");
-  const sessionToken = principal.token;
-  const headscaleUrl = config.headscale.url;
+  const actionId = formData.get("action_id");
 
-  if (actionType === "update_settings") {
-    const apiKey = formData.get("apiKey") as string | null;
-    const theme = formData.get("theme") as string;
-    const profileName = formData.get("profileName") as string | null;
+  const baseUrl = headscale.url;
+  const token = await auth.getSessionToken(request);
+
+  if (actionId === "update_settings") {
+    const apiKey = formData.get("api_key")?.toString() || undefined;
+    const theme = formData.get("theme")?.toString() || undefined;
+    const profileName = formData.get("profile_name")?.toString() || undefined;
 
     try {
-      const response = await fetch(`${headscaleUrl}/api/v1/headplane/settings`, {
+      const body: Record<string, string> = {};
+      if (apiKey !== undefined) body.apiKey = apiKey;
+      if (theme !== undefined) body.theme = theme;
+      if (profileName !== undefined) body.profileName = profileName;
+
+      const response = await fetch(`${baseUrl}/api/v1/headplane/settings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          apiKey: apiKey || undefined,
-          theme,
-          profileName: profileName || undefined,
-        }),
+        body: JSON.stringify(body),
       });
 
-      if (response.ok) {
-        return { success: true, message: "Settings saved successfully", type: "settings" };
+      if (!response.ok) {
+        const error = await response.text();
+        log.error("settings", "Failed to update settings: %s", error);
+        return { success: false, error: "Failed to update settings" };
       }
 
-      const error = await response.text();
-      return { success: false, message: `Failed to save settings: ${error}`, type: "settings" };
+      return { success: true, error: null };
     } catch (error) {
-      return {
-        success: false,
-        message: `Error saving settings: ${String(error)}`,
-        type: "settings",
-      };
+      log.error("settings", "Error updating settings: %s", String(error));
+      return { success: false, error: "Failed to connect to server" };
     }
   }
 
-  if (actionType === "change_password") {
-    const currentPassword = formData.get("currentPassword") as string;
-    const newPassword = formData.get("newPassword") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
+  if (actionId === "change_password") {
+    const currentPassword = formData.get("current_password")?.toString();
+    const newPassword = formData.get("new_password")?.toString();
+    const confirmPassword = formData.get("confirm_password")?.toString();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return { success: false, error: "All password fields are required" };
+    }
 
     if (newPassword !== confirmPassword) {
-      return {
-        success: false,
-        message: "New passwords do not match",
-        type: "password",
-      };
+      return { success: false, error: "New passwords do not match" };
     }
 
     if (newPassword.length < 8) {
-      return {
-        success: false,
-        message: "New password must be at least 8 characters long",
-        type: "password",
-      };
+      return { success: false, error: "Password must be at least 8 characters" };
     }
 
     try {
-      const response = await fetch(`${headscaleUrl}/api/v1/headplane/change-password`, {
+      const response = await fetch(`${baseUrl}/api/v1/headplane/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           currentPassword,
@@ -149,102 +133,97 @@ export async function action({ request, context }: Route.ActionArgs) {
         }),
       });
 
-      if (response.ok) {
-        return {
-          success: true,
-          message: "Password changed successfully. Please log in again.",
-          type: "password",
-        };
+      if (!response.ok) {
+        const error = await response.text();
+        log.error("settings", "Failed to change password: %s", error);
+        return { success: false, error: "Failed to change password. Check your current password." };
       }
 
-      if (response.status === 401) {
-        return {
-          success: false,
-          message: "Current password is incorrect",
-          type: "password",
-        };
-      }
-
-      const error = await response.text();
-      return { success: false, message: `Failed to change password: ${error}`, type: "password" };
+      return { success: true, error: null, message: "Password changed successfully" };
     } catch (error) {
-      return {
-        success: false,
-        message: `Error changing password: ${String(error)}`,
-        type: "password",
-      };
+      log.error("settings", "Error changing password: %s", String(error));
+      return { success: false, error: "Failed to connect to server" };
     }
   }
 
-  return { success: false, message: "Invalid action", type: "unknown" };
+  return { success: false, error: "Unknown action" };
 }
 
-export default function Page({ loaderData }: Route.ComponentProps) {
-  const { settings } = loaderData;
-  const actionData = useActionData<typeof action>();
-
+export default function Page({ loaderData, actionData }: Route.ComponentProps) {
   const [showApiKey, setShowApiKey] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const settingsFetcher = useFetcher<typeof action>();
+  const passwordFetcher = useFetcher<typeof action>();
+
+  const isSettingsSubmitting = settingsFetcher.state !== "idle";
+  const isPasswordSubmitting = passwordFetcher.state !== "idle";
+
   return (
     <div className="flex max-w-(--breakpoint-lg) flex-col gap-8">
       <div className="flex w-full flex-col sm:w-2/3">
-        <h1 className="mb-4 text-2xl font-medium">Profile & Settings</h1>
-        <p>
-          Manage your Headplane preferences, API key storage, and account security. Your API key is
-          encrypted at rest and used to authenticate with Headscale.
-        </p>
+        <Title>Profile Settings</Title>
+        <Text>Manage your personal settings, API key, theme preferences, and password.</Text>
       </div>
 
-      {/* Settings Form */}
-      <Card className="w-full sm:w-2/3" variant="flat">
-        <Card.Title>User Preferences</Card.Title>
-        <Card.Text>
-          Save your Headscale API key and customize your profile. The API key will be stored
-          securely and reused across sessions.
-        </Card.Text>
+      {loaderData.error && (
+        <Notice variant="error" title="Error Loading Settings">
+          {loaderData.error}
+        </Notice>
+      )}
 
-        {actionData?.type === "settings" && (
-          <Notice
-            className="mt-4"
-            variant={actionData.success ? "success" : "error"}
-            title={actionData.success ? "Success" : "Error"}
-          >
-            {actionData.message}
+      {/* User Info Section */}
+      <Card variant="flat">
+        <Card.Title>User Information</Card.Title>
+        <Card.Text>Your account details and identity.</Card.Text>
+        <div className="mt-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-mist-700 dark:text-mist-300">Username:</span>
+            <span className="rounded-md bg-mist-100 px-3 py-1 font-mono text-sm dark:bg-mist-800">
+              {loaderData.username}
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Settings Section */}
+      <Card variant="flat">
+        <Card.Title>Settings</Card.Title>
+        <Card.Text>Configure your API key, theme, and display name.</Card.Text>
+
+        {settingsFetcher.data?.success && (
+          <Notice variant="success" title="Settings Saved" className="mt-4">
+            Your settings have been updated successfully.
           </Notice>
         )}
 
-        <Form method="POST" className="mt-6 space-y-6">
-          <input type="hidden" name="_action" value="update_settings" />
+        {settingsFetcher.data?.error && (
+          <Notice variant="error" title="Error" className="mt-4">
+            {settingsFetcher.data.error}
+          </Notice>
+        )}
 
-          <div>
-            <label htmlFor="profileName" className="mb-2 block text-sm font-medium">
-              Profile Name
-            </label>
-            <Input
-              id="profileName"
-              name="profileName"
-              placeholder="Your name"
-              defaultValue={settings.profileName || ""}
-            />
-            <p className="mt-1 text-sm text-mist-600 dark:text-mist-400">
-              Optional display name for your profile
-            </p>
-          </div>
+        <settingsFetcher.Form method="POST" className="mt-6 flex flex-col gap-6">
+          <input type="hidden" name="action_id" value="update_settings" />
 
-          <div>
-            <label htmlFor="apiKey" className="mb-2 block text-sm font-medium">
+          {/* API Key */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
               Headscale API Key
             </label>
+            <Text className="text-sm">
+              Store your Headscale API key to avoid re-entering it at each login. The key is
+              encrypted at rest.
+            </Text>
             <div className="relative">
               <Input
-                id="apiKey"
-                name="apiKey"
+                name="api_key"
                 type={showApiKey ? "text" : "password"}
-                placeholder="hskey-..."
-                defaultValue={settings.apiKey || ""}
+                placeholder="Enter API key"
+                defaultValue={loaderData.settings.apiKey}
+                className="pr-12"
               />
               <button
                 type="button"
@@ -254,64 +233,76 @@ export default function Page({ loaderData }: Route.ComponentProps) {
                 {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="mt-1 text-sm text-mist-600 dark:text-mist-400">
-              Generate an API key with: <code className="text-xs">headscale apikeys create</code>
-            </p>
           </div>
 
-          <div>
-            <label htmlFor="theme" className="mb-2 block text-sm font-medium">
-              Theme
-            </label>
-            <Select id="theme" name="theme" defaultValue={settings.theme || "system"}>
+          {/* Theme */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">Theme</label>
+            <select
+              name="theme"
+              defaultValue={loaderData.settings.theme}
+              className="rounded-md border border-mist-300 bg-white px-3 py-2 text-sm dark:border-mist-700 dark:bg-mist-800"
+            >
               <option value="light">Light</option>
               <option value="dark">Dark</option>
-              <option value="system">System</option>
-            </Select>
-            <p className="mt-1 text-sm text-mist-600 dark:text-mist-400">
-              Choose your preferred color scheme
-            </p>
+            </select>
           </div>
 
-          <Button type="submit" variant="heavy" className="flex items-center gap-2">
-            <Save className="h-4 w-4" />
-            Save Settings
+          {/* Profile Name */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
+              Display Name (Optional)
+            </label>
+            <Text className="text-sm">
+              A friendly name to display in the UI. If not set, your username is shown.
+            </Text>
+            <Input
+              name="profile_name"
+              type="text"
+              placeholder="Enter display name"
+              defaultValue={loaderData.settings.profileName}
+            />
+          </div>
+
+          <Button type="submit" variant="heavy" disabled={isSettingsSubmitting}>
+            <Save className="mr-2 h-4 w-4" />
+            {isSettingsSubmitting ? "Saving..." : "Save Settings"}
           </Button>
-        </Form>
+        </settingsFetcher.Form>
       </Card>
 
-      {/* Password Change Form */}
-      <Card className="w-full sm:w-2/3" variant="flat">
+      {/* Password Change Section */}
+      <Card variant="flat">
         <Card.Title>Change Password</Card.Title>
-        <Card.Text>
-          Update your Headplane login password. You will need to log in again after changing your
-          password.
-        </Card.Text>
+        <Card.Text>Update your Headplane login password.</Card.Text>
 
-        {actionData?.type === "password" && (
-          <Notice
-            className="mt-4"
-            variant={actionData.success ? "success" : "error"}
-            title={actionData.success ? "Success" : "Error"}
-          >
-            {actionData.message}
+        {passwordFetcher.data?.success && (
+          <Notice variant="success" title="Password Changed" className="mt-4">
+            {passwordFetcher.data.message || "Your password has been changed successfully."}
           </Notice>
         )}
 
-        <Form method="POST" className="mt-6 space-y-6">
-          <input type="hidden" name="_action" value="change_password" />
+        {passwordFetcher.data?.error && (
+          <Notice variant="error" title="Error" className="mt-4">
+            {passwordFetcher.data.error}
+          </Notice>
+        )}
 
-          <div>
-            <label htmlFor="currentPassword" className="mb-2 block text-sm font-medium">
+        <passwordFetcher.Form method="POST" className="mt-6 flex flex-col gap-6">
+          <input type="hidden" name="action_id" value="change_password" />
+
+          {/* Current Password */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
               Current Password
             </label>
             <div className="relative">
               <Input
-                id="currentPassword"
-                name="currentPassword"
+                name="current_password"
                 type={showCurrentPassword ? "text" : "password"}
-                required
                 placeholder="Enter current password"
+                required
+                className="pr-12"
               />
               <button
                 type="button"
@@ -323,18 +314,19 @@ export default function Page({ loaderData }: Route.ComponentProps) {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="newPassword" className="mb-2 block text-sm font-medium">
+          {/* New Password */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
               New Password
             </label>
             <div className="relative">
               <Input
-                id="newPassword"
-                name="newPassword"
+                name="new_password"
                 type={showNewPassword ? "text" : "password"}
+                placeholder="Enter new password"
                 required
                 minLength={8}
-                placeholder="Enter new password"
+                className="pr-12"
               />
               <button
                 type="button"
@@ -344,23 +336,21 @@ export default function Page({ loaderData }: Route.ComponentProps) {
                 {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="mt-1 text-sm text-mist-600 dark:text-mist-400">
-              Must be at least 8 characters long
-            </p>
           </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="mb-2 block text-sm font-medium">
+          {/* Confirm Password */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
               Confirm New Password
             </label>
             <div className="relative">
               <Input
-                id="confirmPassword"
-                name="confirmPassword"
+                name="confirm_password"
                 type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm new password"
                 required
                 minLength={8}
-                placeholder="Confirm new password"
+                className="pr-12"
               />
               <button
                 type="button"
@@ -372,15 +362,15 @@ export default function Page({ loaderData }: Route.ComponentProps) {
             </div>
           </div>
 
-          <Button type="submit" variant="heavy">
-            Change Password
+          <Button type="submit" variant="heavy" disabled={isPasswordSubmitting}>
+            {isPasswordSubmitting ? "Changing Password..." : "Change Password"}
           </Button>
-        </Form>
+        </passwordFetcher.Form>
       </Card>
     </div>
   );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  return <PageError error={error} page="Profile & Settings" />;
+  return <PageError error={error} page="Profile Settings" />;
 }
