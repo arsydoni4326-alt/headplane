@@ -400,9 +400,37 @@ describe("authorization", () => {
     user: { id: "hs-1", name: "test", createdAt: "" },
   };
 
-  test("can() returns true for api_key principal regardless of capability", () => {
+  test("can() returns true for password principal regardless of capability", () => {
     expect(auth.can(apiKeyPrincipal, Capabilities.write_machines)).toBe(true);
     expect(auth.can(apiKeyPrincipal, Capabilities.owner)).toBe(true);
+  });
+
+  test("can() returns true for password principal", () => {
+    const passwordPrincipal: Principal = {
+      kind: "password",
+      sessionId: "test",
+      token: "session-token",
+    };
+    expect(auth.can(passwordPrincipal, Capabilities.write_machines)).toBe(true);
+    expect(auth.can(passwordPrincipal, Capabilities.owner)).toBe(true);
+  });
+
+  test("canManageNode() returns true for password principal", () => {
+    const passwordPrincipal: Principal = {
+      kind: "password",
+      sessionId: "test",
+      token: "session-token",
+    };
+    expect(auth.canManageNode(passwordPrincipal, machine)).toBe(true);
+  });
+
+  test("getHeadscaleApiKey() returns token for password principal", () => {
+    const passwordPrincipal: Principal = {
+      kind: "password",
+      sessionId: "test",
+      token: "session-token-12345",
+    };
+    expect(auth.getHeadscaleApiKey(passwordPrincipal)).toBe("session-token-12345");
   });
 
   test("canManageNode() returns true when user owns the node (matching headscaleUserId)", () => {
