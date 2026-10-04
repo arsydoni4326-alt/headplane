@@ -96,6 +96,38 @@ describe("Admin Users Route", () => {
       expect(result).toHaveProperty("authToken", "api-key-456");
     });
 
+    test("returns an empty user list with an error when the backend rejects the request", async () => {
+      const apiKeyPrincipal: Principal = {
+        kind: "api_key",
+        sessionId: "test-session",
+        displayName: "API Key Admin",
+        apiKey: "api-key-456",
+      };
+
+      mockAuth.require.mockResolvedValue(apiKeyPrincipal);
+      mockAuth.can.mockReturnValue(true);
+      mockAuth.getHeadscaleApiKey.mockReturnValue("api-key-456");
+
+      (global.fetch as any).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+        json: async () => ({ message: "Failed to load users: Internal Server Error" }),
+      });
+
+      const request = new Request("http://localhost/admin/users");
+      const context = createMockContext();
+      const result = await loader({ request, context, params: {} } as any);
+
+      expect(result).toMatchObject({
+        users: [],
+        error: {
+          message: "Failed to load users: Internal Server Error",
+          status: 500,
+        },
+      });
+    });
+
     test("blocks non-admin users from accessing user management", async () => {
       const nonAdminPrincipal: Principal = {
         kind: "password",
