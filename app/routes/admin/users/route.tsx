@@ -8,6 +8,7 @@ import EmptyState from "~/components/empty-state";
 import { appConfigContext, authContext } from "~/server/context";
 import { Capabilities } from "~/server/web/roles";
 import type { Role } from "~/server/web/roles";
+import { isAdmin, createUnauthorizedResponse } from "~/utils/auth";
 import cn from "~/utils/cn";
 
 import type { Route } from "./+types/route";
@@ -22,40 +23,25 @@ export interface HeadplaneUserData {
   createdAt: string;
 }
 
-export interface LoaderError {
-  error: string;
-  message: string;
-  status: number;
-}
-
 export async function loader({ request, context }: Route.LoaderArgs) {
   const auth = context.get(authContext);
   const config = context.get(appConfigContext);
   const principal = await auth.require(request);
 
-  // Only admins with configure_iam capability can access user management
-  const canManageUsers = auth.can(principal, Capabilities.configure_iam);
-  if (!canManageUsers) {
-    return {
-      error: {
-        error: "forbidden",
-        message:
-          "You do not have permission to manage users. Only administrators can access this page.",
-        status: 403,
-      },
-    };
+  // Use centralized admin check
+  if (!isAdmin(auth, principal)) {
+    throw createUnauthorizedResponse(
+      principal,
+      "You do not have permission to manage users. Only administrators can access this page.",
+    );
   }
 
   // Only password-authenticated users can access this page
   if (principal.kind !== "password") {
-    return {
-      error: {
-        error: "forbidden",
-        message:
-          "User management is only available for password-authenticated administrators. Please log out and log in with your password instead of an API key.",
-        status: 403,
-      },
-    };
+    throw createUnauthorizedResponse(
+      principal,
+      "User management is only available for password-authenticated administrators. Please log out and log in with your password instead of an API key.",
+    );
   }
 
   const sessionToken = principal.token;
@@ -114,13 +100,13 @@ export async function action({ request, context }: Route.ActionArgs) {
   const config = context.get(appConfigContext);
   const principal = await auth.require(request);
 
-  if (principal.kind !== "password") {
-    return { success: false, error: "Unauthorized" };
+  // Use centralized admin check
+  if (!isAdmin(auth, principal)) {
+    throw createUnauthorizedResponse(principal, "Insufficient permissions to manage users.");
   }
 
-  const canManageUsers = auth.can(principal, Capabilities.configure_iam);
-  if (!canManageUsers) {
-    return { success: false, error: "Insufficient permissions" };
+  if (principal.kind !== "password") {
+    throw createUnauthorizedResponse(principal, "User management requires password authentication.");
   }
 
   const formData = await request.formData();
@@ -203,34 +189,6 @@ export default function AdminUsersPage({ loaderData }: Route.ComponentProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<HeadplaneUserData | null>(null);
   const [deletingUser, setDeletingUser] = useState<HeadplaneUserData | null>(null);
-  const [showErrorModal, setShowErrorModal] = useState(true);
-
-  // Check if loader returned an error
-  if ("error" in loaderData && loaderData.error) {
-    return (
-      <>
-        <Dialog isOpen={showErrorModal} onOpenChange={setShowErrorModal}>
-          <DialogPanel variant="unactionable">
-            <h2 className="text-lg font-semibold text-red-600 dark:text-red-400">Access Denied</h2>
-            <p className="mt-2 text-sm text-mist-700 dark:text-mist-300">
-              {loaderData.error.message}
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button
-                onClick={() => {
-                  setShowErrorModal(false);
-                  navigate("/");
-                }}
-                variant="heavy"
-              >
-                Go to Dashboard
-              </Button>
-            </div>
-          </DialogPanel>
-        </Dialog>
-      </>
-    );
-  }
 
   return (
     <>
