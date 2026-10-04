@@ -1,9 +1,10 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 import Button from "~/components/button";
+import Dialog, { DialogPanel } from "~/components/dialog";
 import EmptyState from "~/components/empty-state";
-import PageError from "~/components/page-error";
 import { appConfigContext, authContext } from "~/server/context";
 import { Capabilities } from "~/server/web/roles";
 import type { Role } from "~/server/web/roles";
@@ -21,6 +22,12 @@ export interface HeadplaneUserData {
   createdAt: string;
 }
 
+export interface LoaderError {
+  error: string;
+  message: string;
+  status: number;
+}
+
 export async function loader({ request, context }: Route.LoaderArgs) {
   const auth = context.get(authContext);
   const config = context.get(appConfigContext);
@@ -29,14 +36,26 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   // Only admins with configure_iam capability can access user management
   const canManageUsers = auth.can(principal, Capabilities.configure_iam);
   if (!canManageUsers) {
-    throw new Error(
-      "You do not have permission to manage users. Only administrators can access this page.",
-    );
+    return {
+      error: {
+        error: "forbidden",
+        message:
+          "You do not have permission to manage users. Only administrators can access this page.",
+        status: 403,
+      },
+    };
   }
 
   // Only password-authenticated users can access this page
   if (principal.kind !== "password") {
-    throw new Error("User management is only available for password-authenticated administrators.");
+    return {
+      error: {
+        error: "forbidden",
+        message:
+          "User management is only available for password-authenticated administrators. Please log out and log in with your password instead of an API key.",
+        status: 403,
+      },
+    };
   }
 
   const sessionToken = principal.token;
@@ -50,7 +69,24 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to load users: ${response.statusText}`);
+      // Try to parse error response from backend
+      let errorMessage = `Failed to load users: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch {
+        // Ignore JSON parse errors, use default message
+      }
+
+      return {
+        error: {
+          error: response.status === 401 ? "unauthorized" : "error",
+          message: errorMessage,
+          status: response.status,
+        },
+      };
     }
 
     const data = await response.json();
@@ -63,7 +99,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     };
   } catch (error) {
     console.error("Error loading users:", error);
-    throw error;
+    return {
+      error: {
+        error: "error",
+        message: error instanceof Error ? error.message : "An unexpected error occurred",
+        status: 500,
+      },
+    };
   }
 }
 
@@ -157,9 +199,38 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 export default function AdminUsersPage({ loaderData }: Route.ComponentProps) {
+  const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<HeadplaneUserData | null>(null);
   const [deletingUser, setDeletingUser] = useState<HeadplaneUserData | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(true);
+
+  // Check if loader returned an error
+  if ("error" in loaderData && loaderData.error) {
+    return (
+      <>
+        <Dialog isOpen={showErrorModal} onOpenChange={setShowErrorModal}>
+          <DialogPanel variant="unactionable">
+            <h2 className="text-lg font-semibold text-red-600 dark:text-red-400">Access Denied</h2>
+            <p className="mt-2 text-sm text-mist-700 dark:text-mist-300">
+              {loaderData.error.message}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                onClick={() => {
+                  setShowErrorModal(false);
+                  navigate("/");
+                }}
+                variant="heavy"
+              >
+                Go to Dashboard
+              </Button>
+            </div>
+          </DialogPanel>
+        </Dialog>
+      </>
+    );
+  }
 
   return (
     <>
@@ -180,12 +251,10 @@ export default function AdminUsersPage({ loaderData }: Route.ComponentProps) {
         <EmptyState
           title="No users"
           description="Create your first user to get started."
-          action={
-            <Button onClick={() => setShowCreateDialog(true)} variant="heavy">
-              <Plus className="h-4 w-4" />
-              Create User
-            </Button>
-          }
+          action={{
+            label: "Create User",
+            onClick: () => setShowCreateDialog(true),
+          }}
         />
       ) : (
         <div className="overflow-x-auto">
@@ -224,14 +293,10 @@ export default function AdminUsersPage({ loaderData }: Route.ComponentProps) {
                   </td>
                   <td className="py-3 pr-0.5">
                     <div className="flex items-center justify-end gap-2">
-                      <Button onClick={() => setEditingUser(user)} size="sm" variant="secondary">
+                      <Button onClick={() => setEditingUser(user)} variant="light">
                         Edit
                       </Button>
-                      <Button
-                        onClick={() => setDeletingUser(user)}
-                        size="sm"
-                        variant="danger-secondary"
-                      >
+                      <Button onClick={() => setDeletingUser(user)} variant="danger">
                         Delete
                       </Button>
                     </div>
@@ -283,8 +348,4 @@ function mapRoleToName(role: Role) {
     default:
       return "Unknown";
   }
-}
-
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  return <PageError error={error} page="User Management" />;
 }
