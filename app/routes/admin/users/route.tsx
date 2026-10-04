@@ -46,25 +46,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     };
   }
 
-  // Only password-authenticated users can access this page
-  if (principal.kind !== "password") {
-    return {
-      error: {
-        error: "forbidden",
-        message:
-          "User management is only available for password-authenticated administrators. Please log out and log in with your password instead of an API key.",
-        status: 403,
-      },
-    };
-  }
-
-  const sessionToken = principal.token;
+  // Get the appropriate token for API requests (works for both password and API key sessions)
+  const authToken = auth.getHeadscaleApiKey(principal);
   const headscaleUrl = config.headscale.url;
 
   try {
     const response = await fetch(`${headscaleUrl}/api/v1/headplane/users`, {
       headers: {
-        Authorization: `Bearer ${sessionToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
     });
 
@@ -94,7 +83,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
     return {
       users,
-      sessionToken,
+      authToken,
       headscaleUrl,
     };
   } catch (error) {
@@ -114,10 +103,6 @@ export async function action({ request, context }: Route.ActionArgs) {
   const config = context.get(appConfigContext);
   const principal = await auth.require(request);
 
-  if (principal.kind !== "password") {
-    return { success: false, error: "Unauthorized" };
-  }
-
   const canManageUsers = auth.can(principal, Capabilities.configure_iam);
   if (!canManageUsers) {
     return { success: false, error: "Insufficient permissions" };
@@ -125,7 +110,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   const formData = await request.formData();
   const actionType = formData.get("_action") as string;
-  const sessionToken = principal.token;
+  const authToken = auth.getHeadscaleApiKey(principal);
   const headscaleUrl = config.headscale.url;
 
   try {
@@ -138,7 +123,7 @@ export async function action({ request, context }: Route.ActionArgs) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ username, password, role }),
       });
@@ -160,7 +145,7 @@ export async function action({ request, context }: Route.ActionArgs) {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ username, role }),
       });
@@ -179,7 +164,7 @@ export async function action({ request, context }: Route.ActionArgs) {
       const response = await fetch(`${headscaleUrl}/api/v1/headplane/users/${userId}`, {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
 
