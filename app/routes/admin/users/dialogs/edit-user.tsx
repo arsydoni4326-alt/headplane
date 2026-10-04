@@ -5,9 +5,8 @@ import Dialog, { DialogPanel } from "~/components/dialog";
 import Input from "~/components/input";
 import Notice from "~/components/notice";
 import Select from "~/components/select";
-import type { Role } from "~/server/web/roles";
 
-import type { HeadplaneUserData } from "../route";
+import type { HeadplaneDashboardRole, HeadplaneUserData } from "../route";
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -18,7 +17,7 @@ interface EditUserDialogProps {
 export default function EditUserDialog({ isOpen, onOpenChange, user }: EditUserDialogProps) {
   const fetcher = useFetcher();
   const [username, setUsername] = useState(user.username);
-  const [role, setRole] = useState<Role>(user.role);
+  const [role, setRole] = useState<HeadplaneDashboardRole>(user.role);
 
   const isSubmitting = fetcher.state === "submitting";
   const isValid = username.trim();
@@ -66,28 +65,25 @@ export default function EditUserDialog({ isOpen, onOpenChange, user }: EditUserD
             <Input
               id="edit-username"
               type="text"
+              label="Username"
+              labelHidden
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={setUsername}
               placeholder="Enter username"
               required
               autoComplete="off"
             />
           </div>
 
-          <div>
-            <label htmlFor="edit-role" className="mb-1 block text-sm font-medium">
-              Role
-            </label>
-            <Select id="edit-role" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-              <option value="member">Member</option>
-              <option value="viewer">Viewer</option>
-              <option value="auditor">Auditor</option>
-              <option value="it_admin">IT Admin</option>
-              <option value="network_admin">Network Admin</option>
-              <option value="admin">Admin</option>
-              <option value="owner">Owner</option>
-            </Select>
-          </div>
+          <Select
+            items={[
+              { value: "user", label: "User" },
+              { value: "admin", label: "Admin" },
+            ]}
+            label="Role"
+            onValueChange={(value) => setRole((value ?? user.role) as HeadplaneDashboardRole)}
+            value={role}
+          />
         </div>
       </DialogPanel>
     </Dialog>
