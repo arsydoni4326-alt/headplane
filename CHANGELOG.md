@@ -1,5 +1,11 @@
 # Next
 
+# 0.8.18-arsydoni4326-alt (October 4, 2026)
+
+## Changes
+
+- Version synchronization release
+
 # 0.8.14-arsydoni4326-alt (October 2, 2026)
 
 ## Changes
