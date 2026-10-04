@@ -1,5 +1,11 @@
 # Next
 
+## Fixes
+
+- Fixed the admin users Create and Edit dialogs crashing when opened. The role
+  selector now uses the shared Select component correctly and only offers the
+  `user` and `admin` roles accepted by the Headscale API.
+
 # 0.8.18-arsydoni4326-alt (October 4, 2026)
 
 ## Changes

@@ -182,7 +182,7 @@ describe("Admin Users Route", () => {
       formData.set("_action", "create");
       formData.set("username", "newuser");
       formData.set("password", "password123");
-      formData.set("role", "member");
+      formData.set("role", "user");
 
       const request = new Request("http://localhost/admin/users", {
         method: "POST",
@@ -193,6 +193,12 @@ describe("Admin Users Route", () => {
       const result = await action({ request, context, params: {} } as any);
 
       expect(mockAuth.getHeadscaleApiKey).toHaveBeenCalledWith(passwordPrincipal);
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:8080/api/v1/headplane/users",
+        expect.objectContaining({
+          body: JSON.stringify({ username: "newuser", password: "password123", role: "user" }),
+        }),
+      );
       expect(result).toMatchObject({ success: true });
     });
 
@@ -217,7 +223,7 @@ describe("Admin Users Route", () => {
       formData.set("_action", "create");
       formData.set("username", "newuser");
       formData.set("password", "password123");
-      formData.set("role", "member");
+      formData.set("role", "user");
 
       const request = new Request("http://localhost/admin/users", {
         method: "POST",
@@ -228,6 +234,38 @@ describe("Admin Users Route", () => {
       const result = await action({ request, context, params: {} } as any);
 
       expect(mockAuth.getHeadscaleApiKey).toHaveBeenCalledWith(apiKeyPrincipal);
+      expect(result).toMatchObject({ success: true });
+    });
+
+    test("sends an accepted role when updating a user", async () => {
+      const passwordPrincipal: Principal = {
+        kind: "password",
+        sessionId: "test-session",
+        token: "session-token-123",
+        username: "admin-user",
+      };
+
+      mockAuth.require.mockResolvedValue(passwordPrincipal);
+      mockAuth.can.mockReturnValue(true);
+      mockAuth.getHeadscaleApiKey.mockReturnValue("session-token-123");
+      (global.fetch as any).mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+
+      const formData = new FormData();
+      formData.set("_action", "update");
+      formData.set("userId", "42");
+      formData.set("username", "operator");
+      formData.set("role", "admin");
+
+      const request = new Request("http://localhost/admin/users", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await action({ request, context: createMockContext(), params: {} } as any);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:8080/api/v1/headplane/users/42",
+        expect.objectContaining({ body: JSON.stringify({ username: "operator", role: "admin" }) }),
+      );
       expect(result).toMatchObject({ success: true });
     });
 
@@ -246,7 +284,7 @@ describe("Admin Users Route", () => {
       formData.set("_action", "create");
       formData.set("username", "newuser");
       formData.set("password", "password123");
-      formData.set("role", "member");
+      formData.set("role", "user");
 
       const request = new Request("http://localhost/admin/users", {
         method: "POST",

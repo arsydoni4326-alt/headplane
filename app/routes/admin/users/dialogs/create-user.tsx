@@ -6,7 +6,8 @@ import Dialog, { DialogPanel } from "~/components/dialog";
 import Input from "~/components/input";
 import Notice from "~/components/notice";
 import Select from "~/components/select";
-import type { Role } from "~/server/web/roles";
+
+import type { HeadplaneDashboardRole } from "../route";
 
 interface CreateUserDialogProps {
   isOpen: boolean;
@@ -20,7 +21,7 @@ export default function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDia
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<Role>("member");
+  const [role, setRole] = useState<HeadplaneDashboardRole>("user");
 
   const isSubmitting = fetcher.state === "submitting";
   const passwordsMatch = password === confirmPassword;
@@ -46,7 +47,7 @@ export default function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDia
       setUsername("");
       setPassword("");
       setConfirmPassword("");
-      setRole("member");
+      setRole("user");
     }, 100);
   }
 
@@ -72,8 +73,10 @@ export default function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDia
             <Input
               id="username"
               type="text"
+              label="Username"
+              labelHidden
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={setUsername}
               placeholder="Enter username"
               required
               autoComplete="off"
@@ -88,8 +91,10 @@ export default function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDia
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
+                label="Password"
+                labelHidden
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={setPassword}
                 placeholder="Enter password"
                 required
                 autoComplete="new-password"
@@ -112,8 +117,10 @@ export default function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDia
               <Input
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
+                label="Confirm Password"
+                labelHidden
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={setConfirmPassword}
                 placeholder="Confirm password"
                 required
                 autoComplete="new-password"
@@ -131,20 +138,15 @@ export default function CreateUserDialog({ isOpen, onOpenChange }: CreateUserDia
             )}
           </div>
 
-          <div>
-            <label htmlFor="role" className="mb-1 block text-sm font-medium">
-              Role
-            </label>
-            <Select id="role" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-              <option value="member">Member</option>
-              <option value="viewer">Viewer</option>
-              <option value="auditor">Auditor</option>
-              <option value="it_admin">IT Admin</option>
-              <option value="network_admin">Network Admin</option>
-              <option value="admin">Admin</option>
-              <option value="owner">Owner</option>
-            </Select>
-          </div>
+          <Select
+            items={[
+              { value: "user", label: "User" },
+              { value: "admin", label: "Admin" },
+            ]}
+            label="Role"
+            onValueChange={(value) => setRole((value ?? "user") as HeadplaneDashboardRole)}
+            value={role}
+          />
         </div>
       </DialogPanel>
     </Dialog>

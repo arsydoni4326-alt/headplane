@@ -6,7 +6,6 @@ import EmptyState from "~/components/empty-state";
 import Notice from "~/components/notice";
 import { appConfigContext, authContext } from "~/server/context";
 import { Capabilities } from "~/server/web/roles";
-import type { Role } from "~/server/web/roles";
 import { isAdmin, createUnauthorizedResponse } from "~/utils/auth";
 import cn from "~/utils/cn";
 
@@ -15,10 +14,12 @@ import CreateUserDialog from "./dialogs/create-user";
 import DeleteUserDialog from "./dialogs/delete-user";
 import EditUserDialog from "./dialogs/edit-user";
 
+export type HeadplaneDashboardRole = "user" | "admin";
+
 export interface HeadplaneUserData {
   id: string;
   username: string;
-  role: Role;
+  role: HeadplaneDashboardRole;
   createdAt: string;
 }
 
@@ -116,7 +117,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     if (actionType === "create") {
       const username = formData.get("username") as string;
       const password = formData.get("password") as string;
-      const role = formData.get("role") as Role;
+      const role = formData.get("role") as HeadplaneDashboardRole;
 
       const response = await fetch(`${headscaleUrl}/api/v1/headplane/users`, {
         method: "POST",
@@ -138,7 +139,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     if (actionType === "update") {
       const userId = formData.get("userId") as string;
       const username = formData.get("username") as string;
-      const role = formData.get("role") as Role;
+      const role = formData.get("role") as HeadplaneDashboardRole;
 
       const response = await fetch(`${headscaleUrl}/api/v1/headplane/users/${userId}`, {
         method: "PUT",
@@ -292,23 +293,6 @@ export default function AdminUsersPage({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function mapRoleToName(role: Role) {
-  switch (role) {
-    case "owner":
-      return "Owner";
-    case "admin":
-      return "Admin";
-    case "network_admin":
-      return "Network Admin";
-    case "it_admin":
-      return "IT Admin";
-    case "auditor":
-      return "Auditor";
-    case "viewer":
-      return "Viewer";
-    case "member":
-      return "Member";
-    default:
-      return "Unknown";
-  }
+function mapRoleToName(role: HeadplaneDashboardRole) {
+  return role === "admin" ? "Admin" : "User";
 }
