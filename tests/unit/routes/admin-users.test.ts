@@ -109,14 +109,21 @@ describe("Admin Users Route", () => {
 
       const request = new Request("http://localhost/admin/users");
       const context = createMockContext();
-      const result = await loader({ request, context, params: {} } as any);
 
-      expect(result).toHaveProperty("error");
-      expect(result.error).toMatchObject({
-        error: "forbidden",
-        status: 403,
-        message: expect.stringContaining("Only administrators"),
-      });
+      // Expect the loader to throw a Response
+      await expect(loader({ request, context, params: {} } as any)).rejects.toBeInstanceOf(
+        Response,
+      );
+
+      try {
+        await loader({ request, context, params: {} } as any);
+      } catch (response) {
+        expect(response).toBeInstanceOf(Response);
+        expect((response as Response).status).toBe(403);
+        const text = await (response as Response).text();
+        expect(text).toContain("Only administrators");
+      }
+
       expect(global.fetch).not.toHaveBeenCalled();
     });
   });
@@ -215,12 +222,21 @@ describe("Admin Users Route", () => {
       });
 
       const context = createMockContext();
-      const result = await action({ request, context, params: {} } as any);
 
-      expect(result).toMatchObject({
-        success: false,
-        error: "Insufficient permissions",
-      });
+      // Expect the action to throw a Response
+      await expect(action({ request, context, params: {} } as any)).rejects.toBeInstanceOf(
+        Response,
+      );
+
+      try {
+        await action({ request, context, params: {} } as any);
+      } catch (response) {
+        expect(response).toBeInstanceOf(Response);
+        expect((response as Response).status).toBe(403);
+        const text = await (response as Response).text();
+        expect(text).toContain("Insufficient permissions");
+      }
+
       expect(global.fetch).not.toHaveBeenCalled();
     });
   });

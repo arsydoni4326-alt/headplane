@@ -36,14 +36,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     );
   }
 
-  // Only password-authenticated users can access this page
-  if (principal.kind !== "password") {
-    throw createUnauthorizedResponse(
-      principal,
-      "User management is only available for password-authenticated administrators. Please log out and log in with your password instead of an API key.",
-    );
-  }
-
   const sessionToken = principal.token;
   // Get the appropriate token for API requests (works for both password and API key sessions)
   const authToken = auth.getHeadscaleApiKey(principal);
@@ -105,13 +97,6 @@ export async function action({ request, context }: Route.ActionArgs) {
   // Use centralized admin check
   if (!isAdmin(auth, principal)) {
     throw createUnauthorizedResponse(principal, "Insufficient permissions to manage users.");
-  }
-
-  if (principal.kind !== "password") {
-    throw createUnauthorizedResponse(
-      principal,
-      "User management requires password authentication.",
-    );
   }
 
   const canManageUsers = auth.can(principal, Capabilities.configure_iam);
