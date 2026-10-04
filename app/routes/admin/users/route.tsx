@@ -1,10 +1,9 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router";
 
 import Button from "~/components/button";
-import Dialog, { DialogPanel } from "~/components/dialog";
 import EmptyState from "~/components/empty-state";
+import Notice from "~/components/notice";
 import { appConfigContext, authContext } from "~/server/context";
 import { Capabilities } from "~/server/web/roles";
 import type { Role } from "~/server/web/roles";
@@ -36,8 +35,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     );
   }
 
-  const sessionToken = principal.token;
-  // Get the appropriate token for API requests (works for both password and API key sessions)
   const authToken = auth.getHeadscaleApiKey(principal);
   const headscaleUrl = config.headscale.url;
 
@@ -61,6 +58,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       }
 
       return {
+        users: [],
+        authToken,
+        headscaleUrl,
         error: {
           error: response.status === 401 ? "unauthorized" : "error",
           message: errorMessage,
@@ -80,6 +80,9 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   } catch (error) {
     console.error("Error loading users:", error);
     return {
+      users: [],
+      authToken,
+      headscaleUrl,
       error: {
         error: "error",
         message: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -180,10 +183,17 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 export default function AdminUsersPage({ loaderData }: Route.ComponentProps) {
-  const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<HeadplaneUserData | null>(null);
   const [deletingUser, setDeletingUser] = useState<HeadplaneUserData | null>(null);
+
+  if ("error" in loaderData && loaderData.error) {
+    return (
+      <Notice variant="error" title="Unable to load users">
+        {loaderData.error.message}
+      </Notice>
+    );
+  }
 
   return (
     <>
