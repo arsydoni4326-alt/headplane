@@ -21,18 +21,22 @@ read -r -p "Enter choice [1-2]: " choice
 # --- Step 2: Execute based on choice ---
 APP_VERSION="$(git rev-parse --short HEAD)"
 BASE_NAME="ghcr.io/arsydoni4326-alt/headplane"
-IMAGE_NAME="${BASE_NAME}:${APP_VERSION}"
+echo -n "Enter you version: "
+read -r VERSION
+if [ ! -z $VERSION ]; then
+  APP_VERSION=$VERSION
+fi
 case "$choice" in
   1)
     echo "--- Building from Source and Running ---"
     # Get Version Information
-    APP_COMMIT="$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")"
-    APP_VERSION="$(git rev-parse --short HEAD)"
+    IMAGE_NAME="${BASE_NAME}:${APP_VERSION}"
+    APP_COMMIT="$(git rev-parse --short HEAD)"
     BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
     echo "Building with the following info:"
-    echo "  Version: ${APP_COMMIT}"
-    echo "  Commit: ${APP_VERSION}"
+    echo "  Version: ${APP_VERSION}"
+    echo "  Commit: ${APP_COMMIT}"
     echo "  Build Date: ${BUILD_DATE}"
     echo "  Image Name: ${IMAGE_NAME}"
     echo "----------------------------------------"
