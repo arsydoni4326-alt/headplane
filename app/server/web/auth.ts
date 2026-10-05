@@ -542,12 +542,8 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
       return principal.apiKey;
     }
 
-    if (principal.kind === "password") {
-      return principal.token;
-    }
-
     if (!opts.headscaleApiKey) {
-      throw new Error("User sessions require headscale.api_key to be configured");
+      throw new Error("Password and user sessions require headscale.api_key to be configured");
     }
 
     return opts.headscaleApiKey;

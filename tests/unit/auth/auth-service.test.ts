@@ -426,14 +426,33 @@ describe("authorization", () => {
     expect(auth.canManageNode(passwordPrincipal, machine)).toBe(true);
   });
 
-  test("getHeadscaleApiKey() returns token for password principal", () => {
+  test("getHeadscaleApiKey() returns the submitted key for API key sessions", () => {
+    expect(auth.getHeadscaleApiKey(apiKeyPrincipal)).toBe("key");
+  });
+
+  test("getHeadscaleApiKey() returns the configured key for password sessions", () => {
+    const { auth: configuredAuth } = createTestAuth({
+      headscaleApiKey: "configured-headscale-key",
+    });
     const passwordPrincipal: Principal = {
       kind: "password",
       sessionId: "test",
       token: "session-token-12345",
       username: "testuser",
     };
-    expect(auth.getHeadscaleApiKey(passwordPrincipal)).toBe("session-token-12345");
+    expect(configuredAuth.getHeadscaleApiKey(passwordPrincipal)).toBe("configured-headscale-key");
+  });
+
+  test("getHeadscaleApiKey() rejects password sessions without a configured key", () => {
+    const passwordPrincipal: Principal = {
+      kind: "password",
+      sessionId: "test",
+      token: "session-token-12345",
+      username: "testuser",
+    };
+    expect(() => auth.getHeadscaleApiKey(passwordPrincipal)).toThrow(
+      "Password and user sessions require headscale.api_key to be configured",
+    );
   });
 
   test("canManageNode() returns true when user owns the node (matching headscaleUserId)", () => {

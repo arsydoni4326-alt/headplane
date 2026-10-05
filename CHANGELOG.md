@@ -5,6 +5,10 @@
 - Fixed the admin users Create and Edit dialogs crashing when opened. The role
   selector now uses the shared Select component correctly and only offers the
   `user` and `admin` roles accepted by the Headscale API.
+- Fixed password-authenticated dashboard sessions being immediately logged out
+  after login. Headplane now uses its configured server-side Headscale API key
+  for dashboard API requests instead of incorrectly presenting the password
+  session token as an API key.
 
 # 0.8.18-arsydoni4326-alt (October 4, 2026)
 
