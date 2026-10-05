@@ -148,4 +148,15 @@ describe("actorFromPrincipal", () => {
 
     expect(actorFromPrincipal(principal)).toEqual({ actorId: null, actorName: "deploy-key" });
   });
+
+  test("password principal uses its username and no actor id", () => {
+    const principal: Principal = {
+      kind: "password",
+      sessionId: "s1",
+      token: "session-token",
+      username: "admin",
+    };
+
+    expect(actorFromPrincipal(principal)).toEqual({ actorId: null, actorName: "admin" });
+  });
 });

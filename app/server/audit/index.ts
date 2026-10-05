@@ -126,6 +126,10 @@ export function actorFromPrincipal(principal: Principal): {
     return { actorId: null, actorName: principal.displayName };
   }
 
+  if (principal.kind === "password") {
+    return { actorId: null, actorName: principal.username };
+  }
+
   const name = principal.profile.name || principal.profile.email || principal.user.subject;
   return { actorId: principal.user.id, actorName: name };
 }
