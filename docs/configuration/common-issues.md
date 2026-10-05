@@ -43,3 +43,23 @@ with a positive `Max-Age`.
 `cookie_secure: true` is still required when the public Headplane URL uses
 HTTPS, including when TLS terminates at a reverse proxy. It controls whether a
 cookie may be sent over HTTP; it does not by itself explain an empty cookie.
+
+### Password login redirects back to the login page
+
+Password login needs a server-side Headscale API key to load machines and other
+dashboard data. The password-session token only authenticates Headplane-specific
+endpoints; it is not a Headscale API key.
+
+Configure a valid, unexpired administrative API key for Headplane and restart
+the service:
+
+```yaml
+headscale:
+  api_key: "<headscale-api-key>"
+```
+
+Keep this key server-side. Do not put it in the browser, a public reverse-proxy
+configuration, or a client-side environment variable. If the issue persists,
+check the Headplane logs for `Live store: failed to poll nodes` or
+`Live store: failed to poll users`, then verify the configured key has not been
+revoked or expired.
