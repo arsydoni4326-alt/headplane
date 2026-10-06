@@ -16,6 +16,16 @@ interface ErrorCodes {
     pathKey: string;
     filePath: string;
   };
+
+  CONFIG_WRITE_FAILED: {
+    path: string;
+    error: string;
+  };
+
+  CONFIG_READ_FAILED: {
+    path: string;
+    error: string;
+  };
 }
 
 const translationsWithVars: {
@@ -30,6 +40,10 @@ const translationsWithVars: {
 
   MISSING_SECRET_FILE: ({ pathKey, filePath }) =>
     `The secret file specified in "${pathKey}" could not be accessed at path "${filePath}". Please ensure the file exists and is readable.`,
+
+  CONFIG_WRITE_FAILED: ({ path, error }) => `Failed to write configuration to "${path}": ${error}`,
+
+  CONFIG_READ_FAILED: ({ path, error }) => `Failed to read configuration from "${path}": ${error}`,
 } as const;
 
 /**

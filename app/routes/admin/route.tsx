@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, redirect } from "react-router";
+import { Form, redirect, Link } from "react-router";
 
 import Button from "~/components/button";
 import Card from "~/components/card";
@@ -162,6 +162,9 @@ export default function AdminRoute({ loaderData, actionData }: Route.ComponentPr
             Manage your local administrator account and API keys
           </p>
         </div>
+        <Link to="/admin/admin/users">
+          <Button variant="light">Edit Profile</Button>
+        </Link>
       </div>
 
       <Notice title="Single Local Administrator Mode" variant="default">

@@ -41,7 +41,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       log.error("settings", "Failed to fetch settings: %s", response.statusText);
       return {
         username,
-        settings: { apiKey: "", theme: "light", profileName: "" },
+        settings: { username: "", name: "", avatar: "", apiKey: "", theme: "light" },
         error: "Failed to load settings",
       };
     }
@@ -52,7 +52,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     log.error("settings", "Error fetching settings: %s", String(error));
     return {
       username,
-      settings: { apiKey: "", theme: "light", profileName: "" },
+      settings: { username: "", name: "", avatar: "", apiKey: "", theme: "light" },
       error: "Failed to connect to server",
     };
   }
@@ -71,15 +71,19 @@ export async function action({ request, context }: Route.ActionArgs) {
   const token = await auth.getSessionToken(request);
 
   if (actionId === "update_settings") {
+    const username = formData.get("username")?.toString() || undefined;
+    const name = formData.get("name")?.toString() || undefined;
+    const avatar = formData.get("avatar")?.toString() || undefined;
     const apiKey = formData.get("api_key")?.toString() || undefined;
     const theme = formData.get("theme")?.toString() || undefined;
-    const profileName = formData.get("profile_name")?.toString() || undefined;
 
     try {
       const body: Record<string, string> = {};
+      if (username !== undefined) body.username = username;
+      if (name !== undefined) body.name = name;
+      if (avatar !== undefined) body.avatar = avatar;
       if (apiKey !== undefined) body.apiKey = apiKey;
       if (theme !== undefined) body.theme = theme;
-      if (profileName !== undefined) body.profileName = profileName;
 
       const response = await fetch(`${baseUrl}/api/v1/headplane/settings`, {
         method: "POST",
@@ -208,6 +212,51 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
         <settingsFetcher.Form method="POST" className="mt-6 flex flex-col gap-6">
           <input type="hidden" name="action_id" value="update_settings" />
 
+          {/* Username */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">Username</label>
+            <Text className="text-sm">Your administrator username for logging into Headplane.</Text>
+            <Input
+              name="username"
+              type="text"
+              placeholder="Enter username"
+              defaultValue={loaderData.settings.username}
+              required
+            />
+          </div>
+
+          {/* Display Name */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
+              Display Name (Optional)
+            </label>
+            <Text className="text-sm">
+              A friendly name to display in the UI. If not set, your username is shown.
+            </Text>
+            <Input
+              name="name"
+              type="text"
+              placeholder="Enter display name"
+              defaultValue={loaderData.settings.name}
+            />
+          </div>
+
+          {/* Avatar URL */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
+              Avatar URL (Optional)
+            </label>
+            <Text className="text-sm">
+              A profile picture URL (HTTPS only). Leave empty to use the default avatar.
+            </Text>
+            <Input
+              name="avatar"
+              type="url"
+              placeholder="https://example.com/avatar.png"
+              defaultValue={loaderData.settings.avatar}
+            />
+          </div>
+
           {/* API Key */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
@@ -246,22 +295,6 @@ export default function Page({ loaderData, actionData }: Route.ComponentProps) {
               <option value="light">Light</option>
               <option value="dark">Dark</option>
             </select>
-          </div>
-
-          {/* Profile Name */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-mist-700 dark:text-mist-300">
-              Display Name (Optional)
-            </label>
-            <Text className="text-sm">
-              A friendly name to display in the UI. If not set, your username is shown.
-            </Text>
-            <Input
-              name="profile_name"
-              type="text"
-              placeholder="Enter display name"
-              defaultValue={loaderData.settings.profileName}
-            />
           </div>
 
           <Button type="submit" variant="heavy" disabled={isSettingsSubmitting}>
