@@ -54,46 +54,11 @@ export async function loginAction({ request, context }: Route.LoaderArgs) {
       });
     }
 
-    // Fall back to legacy Headscale password login (will be removed)
-    try {
-      const response = await headscale.passwordLogin(username, password);
-      const maxAge = (response.expires_at - Math.floor(Date.now() / 1000)) * 1000;
-
-      return redirect("/machines", {
-        headers: {
-          "Set-Cookie": await auth.createPasswordSession(response.token, response.username, maxAge),
-        },
-      });
-    } catch (error) {
-      if (isDataWithApiError(error)) {
-        const apiError = error.data;
-        if (apiError.statusCode === 401) {
-          return {
-            success: false,
-            message: "Invalid password",
-          };
-        }
-        if (apiError.statusCode === 429) {
-          return {
-            success: false,
-            message: "Too many failed attempts. Please try again later.",
-          };
-        }
-        if (apiError.statusCode === 503) {
-          return {
-            success: false,
-            message: "Password authentication is not configured on the server",
-          };
-        }
-      }
-
-      log.error("auth", "Error while validating password: %s", error);
-      log.debug("auth", "Error details: %o", error);
-      return {
-        success: false,
-        message: "Error while validating password (see logs for details)",
-      };
-    }
+    // Local admin mode not configured
+    return {
+      success: false,
+      message: "Password authentication is not available",
+    };
   }
 
   // API key login flow (existing logic)
