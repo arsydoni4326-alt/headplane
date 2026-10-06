@@ -1,6 +1,6 @@
 import { redirect } from "react-router";
 
-import { authContext, headscaleContext } from "~/server/context";
+import { authContext, headscaleContext, localAdminContext } from "~/server/context";
 import { isDataWithApiError } from "~/server/headscale/api/error-client";
 import log from "~/utils/log";
 
@@ -9,13 +9,14 @@ import type { Route } from "./+types/page";
 export async function loginAction({ request, context }: Route.LoaderArgs) {
   const auth = context.get(authContext);
   const headscale = context.get(headscaleContext);
+  const localAdmin = context.get(localAdminContext);
 
   const formData = await request.formData();
   const apiKey = formData.has("api_key") ? String(formData.get("api_key")) : undefined;
   const username = formData.has("username") ? String(formData.get("username")) : undefined;
   const password = formData.has("password") ? String(formData.get("password")) : undefined;
 
-  // Password login flow
+  // Password login flow - use local admin service if available
   if (password !== undefined) {
     if (!username || username.length === 0) {
       log.warn("auth", "Request made with empty username");
@@ -33,45 +34,31 @@ export async function loginAction({ request, context }: Route.LoaderArgs) {
       };
     }
 
-    try {
-      const response = await headscale.passwordLogin(username, password);
-      const maxAge = (response.expires_at - Math.floor(Date.now() / 1000)) * 1000;
-
-      return redirect("/machines", {
-        headers: {
-          "Set-Cookie": await auth.createPasswordSession(response.token, response.username, maxAge),
-        },
-      });
-    } catch (error) {
-      if (isDataWithApiError(error)) {
-        const apiError = error.data;
-        if (apiError.statusCode === 401) {
-          return {
-            success: false,
-            message: "Invalid password",
-          };
-        }
-        if (apiError.statusCode === 429) {
-          return {
-            success: false,
-            message: "Too many failed attempts. Please try again later.",
-          };
-        }
-        if (apiError.statusCode === 503) {
-          return {
-            success: false,
-            message: "Password authentication is not configured on the server",
-          };
-        }
+    // Use local admin authentication if configured
+    if (localAdmin.state === "enabled") {
+      const result = await localAdmin.value.authenticate(username, password);
+      if (!result.success) {
+        log.warn("auth", "Local admin authentication failed for user: %s", username);
+        return {
+          success: false,
+          message: result.error || "Invalid username or password",
+        };
       }
 
-      log.error("auth", "Error while validating password: %s", error);
-      log.debug("auth", "Error details: %o", error);
-      return {
-        success: false,
-        message: "Error while validating password (see logs for details)",
-      };
+      // Create a password session with configured service API key
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      return redirect("/machines", {
+        headers: {
+          "Set-Cookie": await auth.createPasswordSession("local-admin-token", username, maxAge),
+        },
+      });
     }
+
+    // Local admin mode not configured
+    return {
+      success: false,
+      message: "Password authentication is not available",
+    };
   }
 
   // API key login flow (existing logic)
