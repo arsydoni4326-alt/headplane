@@ -95,6 +95,7 @@ export interface AuthService {
   createApiKeySession(apiKey: string, displayName: string, maxAge: number): Promise<string>;
   createPasswordSession(token: string, username: string, maxAge: number): Promise<string>;
   destroySession(request?: Request): Promise<string>;
+  invalidatePasswordSessions(): Promise<number>;
   findOrCreateUser(
     subject: string,
     profile?: { name?: string; email?: string; picture?: string },
@@ -620,6 +621,11 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
     return cookie.serialize("", { expires: new Date(0), maxAge: 0 });
   }
 
+  async function invalidatePasswordSessions(): Promise<number> {
+    const result = await opts.db.delete(authSessions).where(eq(authSessions.kind, "password"));
+    return result.changes ?? 0;
+  }
+
   async function findOrCreateUser(
     subject: string,
     profile?: { name?: string; email?: string; picture?: string },
@@ -823,6 +829,7 @@ export function createAuthService(opts: AuthServiceOptions): AuthService {
     createApiKeySession,
     createPasswordSession,
     destroySession,
+    invalidatePasswordSessions,
     findOrCreateUser,
     linkHeadscaleUser,
     unlinkHeadscaleUser,
