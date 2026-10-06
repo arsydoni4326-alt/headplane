@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { authContext, headscaleContext } from "~/server/context";
+import { authContext, headscaleContext, localAdminContext } from "~/server/context";
 
 // Helper to create a mock FormData with username and password
 function mockPasswordFormData(username: string, password: string): FormData {
@@ -31,12 +31,31 @@ interface MockAuth {
   createPasswordSession: ReturnType<typeof vi.fn>;
 }
 
+interface MockLocalAdmin {
+  state: "enabled" | "disabled";
+  value?: {
+    authenticate: ReturnType<typeof vi.fn>;
+  };
+  reason?: string;
+}
+
 // React Router 7 provides context values through context.get(contextKey).
-function createMockContext({ headscale, auth }: { headscale: MockHeadscale; auth: MockAuth }) {
+function createMockContext({
+  headscale,
+  auth,
+  localAdmin,
+}: {
+  headscale: MockHeadscale;
+  auth: MockAuth;
+  localAdmin?: MockLocalAdmin;
+}) {
   return {
-    get: (context: typeof authContext | typeof headscaleContext) => {
+    get: (context: typeof authContext | typeof headscaleContext | typeof localAdminContext) => {
       if (context === authContext) return auth;
       if (context === headscaleContext) return headscale;
+      if (context === localAdminContext) {
+        return localAdmin || { state: "disabled", reason: "Not configured" };
+      }
       return undefined;
     },
   };

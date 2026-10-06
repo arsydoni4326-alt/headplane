@@ -5,6 +5,7 @@ import { load } from "js-yaml";
 
 import log from "~/utils/log";
 
+import { validateBcryptHash } from "../auth/bcrypt-utils";
 import {
   headplaneConfig,
   PartialHeadplaneConfig,
@@ -46,6 +47,34 @@ export async function loadConfig(configPathOverride?: string) {
     throw ConfigError.from("INVALID_REQUIRED_FIELDS", {
       messages: finalConfig.map((e) => e.toString()),
     });
+  }
+
+  // Validate single-admin mode configuration
+  if (finalConfig.user) {
+    if (!finalConfig.user.username || finalConfig.user.username.trim().length === 0) {
+      throw ConfigError.from("INVALID_REQUIRED_FIELDS", {
+        messages: ["user.username is required when user block is present"],
+      });
+    }
+
+    if (!finalConfig.user.password || finalConfig.user.password.trim().length === 0) {
+      throw ConfigError.from("INVALID_REQUIRED_FIELDS", {
+        messages: ["user.password is required when user block is present"],
+      });
+    }
+
+    const bcryptValidation = validateBcryptHash(finalConfig.user.password);
+    if (!bcryptValidation.valid) {
+      throw ConfigError.from("INVALID_REQUIRED_FIELDS", {
+        messages: [`user.password: ${bcryptValidation.error}`],
+      });
+    }
+
+    log.info(
+      "config",
+      "Single local administrator mode enabled for user: %s",
+      finalConfig.user.username,
+    );
   }
 
   return finalConfig;

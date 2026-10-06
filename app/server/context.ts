@@ -5,6 +5,7 @@ import { createContext } from "react-router";
 import log from "~/utils/log";
 
 import { createAuditService } from "./audit";
+import { createLocalAdminService, type LocalAdminService } from "./auth/local-admin";
 import type { HeadplaneConfig } from "./config/config-schema";
 import { loadIntegration } from "./config/integration";
 import { createDbClient } from "./db/client.server";
@@ -27,6 +28,7 @@ export const headscaleApiKeyContext = createContext<AppContext["headscaleApiKey"
 export const headscaleConfigContext = createContext<AppContext["hs"]>();
 export const headscaleLiveStoreContext = createContext<AppContext["hsLive"]>();
 export const integrationContext = createContext<AppContext["integration"]>();
+export const localAdminContext = createContext<AppContext["localAdmin"]>();
 export const oidcContext = createContext<AppContext["oidc"]>();
 export const requestApiContext = createContext<AppContext["apiForRequest"]>();
 
@@ -73,7 +75,8 @@ export async function createAppContext(config: HeadplaneConfig) {
     },
   });
 
-  const oidc = buildOidc(config, headscaleApiKey);
+  const localAdmin = buildLocalAdmin(config);
+  const oidc = buildOidc(config, headscaleApiKey, localAdmin);
 
   const hsLive = createLiveStore([nodesResource, usersResource]);
   const hs = await loadHeadscaleConfig(
@@ -122,6 +125,7 @@ export async function createAppContext(config: HeadplaneConfig) {
     headscaleApiKey,
     agents,
     auth,
+    localAdmin,
     oidc,
     hsLive,
     hs,
@@ -132,10 +136,29 @@ export async function createAppContext(config: HeadplaneConfig) {
   };
 }
 
+function buildLocalAdmin(config: HeadplaneConfig): Feature<LocalAdminService> {
+  if (!config.user) {
+    return disabled("Local administrator is not configured");
+  }
+
+  return enabled(
+    createLocalAdminService({
+      username: config.user.username,
+      passwordHash: config.user.password,
+    }),
+  );
+}
+
 function buildOidc(
   config: HeadplaneConfig,
   headscaleApiKey: string | undefined,
+  localAdmin: Feature<LocalAdminService>,
 ): Feature<OidcService> {
+  // Disable OIDC if local admin mode is active
+  if (localAdmin.state === "enabled") {
+    return disabled("OIDC is disabled in single local administrator mode");
+  }
+
   if (!config.oidc) {
     return disabled("OIDC is not configured");
   }

@@ -32,6 +32,7 @@ import {
   headscaleContext,
   headscaleLiveStoreContext,
   integrationContext,
+  localAdminContext,
   oidcContext,
   requestApiContext,
 } from "./context";
@@ -89,6 +90,7 @@ function getLoadContext(request: Request, client: ClientAddress) {
   routerContext.set(headscaleConfigContext, ctx.hs);
   routerContext.set(headscaleLiveStoreContext, ctx.hsLive);
   routerContext.set(integrationContext, ctx.integration);
+  routerContext.set(localAdminContext, ctx.localAdmin);
   routerContext.set(oidcContext, ctx.oidc);
   routerContext.set(requestApiContext, ctx.apiForRequest);
   return routerContext;
