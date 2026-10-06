@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 
 test.describe("Admin Password Reset", () => {
-  test("resets password and invalidates sessions", async ({ page, context }) => {
+  test("resets password and invalidates sessions", async ({ page }) => {
     // Setup: Create a temporary config with a known password
     // Note: This test assumes we're in single-admin mode with password login enabled
 
@@ -128,7 +128,7 @@ test.describe("Admin Password Reset", () => {
     await expect(page.getByText(/all fields are required/i)).toBeVisible();
   });
 
-  test("shows immutable config guidance when config is read-only", async ({ page }) => {
+  test("shows immutable config guidance when config is read-only", async () => {
     // This test would require mocking a read-only config scenario
     // For now, we document the expected behavior:
     // - When config file is read-only (e.g., mounted ConfigMap)
