@@ -5,6 +5,7 @@ import { createContext } from "react-router";
 import log from "~/utils/log";
 
 import { createAuditService } from "./audit";
+import { createLocalAdminService, type LocalAdminService } from "./auth/local-admin";
 import type { HeadplaneConfig } from "./config/config-schema";
 import { loadIntegration } from "./config/integration";
 import { createDbClient } from "./db/client.server";
@@ -27,6 +28,7 @@ export const headscaleApiKeyContext = createContext<AppContext["headscaleApiKey"
 export const headscaleConfigContext = createContext<AppContext["hs"]>();
 export const headscaleLiveStoreContext = createContext<AppContext["hsLive"]>();
 export const integrationContext = createContext<AppContext["integration"]>();
+export const localAdminContext = createContext<AppContext["localAdmin"]>();
 export const oidcContext = createContext<AppContext["oidc"]>();
 export const requestApiContext = createContext<AppContext["apiForRequest"]>();
 
@@ -49,19 +51,23 @@ export async function createAppContext(config: HeadplaneConfig) {
     db,
   );
 
+  // Build local admin first so we can disable proxy auth if needed
+  const localAdmin = buildLocalAdmin(config);
+
+  const proxyAuthConfig = buildProxyAuthConfig(config, localAdmin);
   const auth = createAuthService({
     secret: config.server.cookie_secret,
     headscaleApiKey,
-    proxyAuth: config.server.proxy_auth
+    proxyAuth: proxyAuthConfig
       ? {
-          enabled: config.server.proxy_auth.enabled,
-          allowedCidrs: config.server.proxy_auth.allowed_cidrs,
-          trustedProxyCidrs: config.server.proxy_auth.trusted_proxy_cidrs,
-          ipHeader: config.server.proxy_auth.ip_header,
-          userHeader: config.server.proxy_auth.user_header,
-          emailHeader: config.server.proxy_auth.email_header,
-          nameHeader: config.server.proxy_auth.name_header,
-          pictureHeader: config.server.proxy_auth.picture_header,
+          enabled: proxyAuthConfig.enabled,
+          allowedCidrs: proxyAuthConfig.allowed_cidrs,
+          trustedProxyCidrs: proxyAuthConfig.trusted_proxy_cidrs,
+          ipHeader: proxyAuthConfig.ip_header,
+          userHeader: proxyAuthConfig.user_header,
+          emailHeader: proxyAuthConfig.email_header,
+          nameHeader: proxyAuthConfig.name_header,
+          pictureHeader: proxyAuthConfig.picture_header,
         }
       : undefined,
     db,
@@ -72,8 +78,7 @@ export async function createAppContext(config: HeadplaneConfig) {
       domain: config.server.cookie_domain,
     },
   });
-
-  const oidc = buildOidc(config, headscaleApiKey);
+  const oidc = buildOidc(config, headscaleApiKey, localAdmin);
 
   const hsLive = createLiveStore([nodesResource, usersResource]);
   const hs = await loadHeadscaleConfig(
@@ -122,6 +127,7 @@ export async function createAppContext(config: HeadplaneConfig) {
     headscaleApiKey,
     agents,
     auth,
+    localAdmin,
     oidc,
     hsLive,
     hs,
@@ -132,10 +138,29 @@ export async function createAppContext(config: HeadplaneConfig) {
   };
 }
 
+function buildLocalAdmin(config: HeadplaneConfig): Feature<LocalAdminService> {
+  if (!config.user) {
+    return disabled("Local administrator is not configured");
+  }
+
+  return enabled(
+    createLocalAdminService({
+      username: config.user.username,
+      passwordHash: config.user.password,
+    }),
+  );
+}
+
 function buildOidc(
   config: HeadplaneConfig,
   headscaleApiKey: string | undefined,
+  localAdmin: Feature<LocalAdminService>,
 ): Feature<OidcService> {
+  // Disable OIDC if local admin mode is active
+  if (localAdmin.state === "enabled") {
+    return disabled("OIDC is disabled in single local administrator mode");
+  }
+
   if (!config.oidc) {
     return disabled("OIDC is not configured");
   }
@@ -171,6 +196,18 @@ function buildOidc(
       postLogoutRedirectUri: config.oidc.post_logout_redirect_uri,
     }),
   );
+}
+
+function buildProxyAuthConfig(
+  config: HeadplaneConfig,
+  localAdmin: Feature<LocalAdminService>,
+): typeof config.server.proxy_auth | undefined {
+  // Disable proxy auth if local admin mode is active
+  if (localAdmin.state === "enabled") {
+    return undefined;
+  }
+
+  return config.server.proxy_auth;
 }
 
 async function buildAgents(

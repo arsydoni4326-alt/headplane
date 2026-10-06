@@ -12,6 +12,7 @@ export const pathSupportedKeys = [
   "headscale.api_key",
   "oidc.client_secret",
   "oidc.headscale_api_key",
+  "user.password",
 ] as const;
 
 function normalizeStringArray(values: string[]): string[] {
@@ -115,6 +116,16 @@ const partialHeadscaleConfig = type({
 });
 
 const assignableRole = '"admin" | "network_admin" | "it_admin" | "auditor" | "viewer" | "member"';
+
+const userConfig = type({
+  username: "string",
+  password: "string",
+});
+
+const partialUserConfig = type({
+  username: "string?",
+  password: "string?",
+});
 
 const oidcConfig = type({
   enabled: "boolean = true",
@@ -238,6 +249,7 @@ export const headplaneConfig = type({
   debug: "boolean = false",
   server: serverConfig,
   headscale: headscaleConfig,
+  user: userConfig.optional(),
   oidc: oidcConfig.optional(),
   integration: integrationConfig.optional(),
 }).onDeepUndeclaredKey("delete");
@@ -246,6 +258,7 @@ export const partialHeadplaneConfig = type({
   debug: "boolean?",
   server: partialServerConfig.optional(),
   headscale: partialHeadscaleConfig.optional(),
+  user: partialUserConfig.optional(),
   oidc: partialOidcConfig.optional(),
   integration: partialIntegrationConfig.optional(),
 });

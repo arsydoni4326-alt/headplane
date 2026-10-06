@@ -1,4 +1,22 @@
 # Configuration for the Headplane server and web application
+
+# Single local administrator configuration (Phase 13c)
+# When configured, this replaces Headscale-backed multi-user authentication
+# with one Headplane-owned local administrator.
+#
+# Authentication methods available with user block:
+# - Local password (username + bcrypt password below)
+# - Headscale API keys (configured separately)
+#
+# OIDC and proxy authentication are disabled when user block is present.
+# user:
+#   username: admin
+#   # Bcrypt verification hash at cost 12. Never plaintext.
+#   # Generate with: headplane hash-password --password-stdin
+#   password: "$2b$12$..."
+#   # Or use password_path to load from a managed secret file:
+#   # password_path: "${CREDENTIALS_DIRECTORY}/headplane-admin-password"
+
 server:
   # These are the default values, change them as needed
   host: "0.0.0.0"
@@ -117,10 +135,12 @@ headscale:
   config_path: "/etc/headscale/config.yaml"
 
   # The API key used by Headplane for server-side operations.
-  # This is required for OIDC authentication, proxy authentication, and the
-  # Headplane agent.
+  # This is required for local password authentication, OIDC authentication,
+  # proxy authentication, and the Headplane agent.
   # Generate one with: headscale apikeys create
   api_key: "hskey-api-bZbrDrGA-xz_-4eOeY-dQzLOSWFf8gEEHIt43TCY7azMYYwzlSEHqRJ_VaPhY-lCuuhLAmWaiEJzw"
+  # Or use api_key_path to load from a managed secret file:
+  # api_key_path: "${CREDENTIALS_DIRECTORY}/headscale-api-key"
 
   # If you are using `dns.extra_records_path` in your Headscale
   # configuration, Headplane will read that path automatically. Set
