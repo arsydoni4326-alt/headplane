@@ -167,7 +167,7 @@ export default function AdminRoute({ loaderData, actionData }: Route.ComponentPr
         </Link>
       </div>
 
-      <Notice title="Single Local Administrator Mode" variant="default">
+      <Notice className="mt-6 w-full max-w-none" title="Single Local Administrator Mode" variant="default">
         Headplane is configured for one local administrator. User management is not available in
         this mode.
       </Notice>
