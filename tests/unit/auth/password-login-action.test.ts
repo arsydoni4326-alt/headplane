@@ -2,66 +2,35 @@ import { describe, expect, test, vi } from "vitest";
 
 import { authContext, headscaleContext, localAdminContext } from "~/server/context";
 
-// Helper to create a mock FormData with username and password
-function mockPasswordFormData(username: string, password: string): FormData {
+function passwordRequest(username: string, password: string): Request {
   const formData = new FormData();
   formData.set("username", username);
   formData.set("password", password);
-  return formData;
+  return new Request("http://headplane.test/login", { method: "POST", body: formData });
 }
 
-// Helper to create mock request
-function mockRequest(formData: FormData): Request {
-  return {
-    formData: () => Promise.resolve(formData),
-  } as unknown as Request;
-}
-
-// Types for test clarity
-interface LoginResult {
-  success: boolean;
-  message: string;
-}
-
-interface MockHeadscale {
-  passwordLogin: ReturnType<typeof vi.fn>;
-}
-
-interface MockAuth {
-  createPasswordSession: ReturnType<typeof vi.fn>;
-}
-
-interface MockLocalAdmin {
-  state: "enabled" | "disabled";
-  value?: {
-    authenticate: ReturnType<typeof vi.fn>;
-  };
-  reason?: string;
-}
-
-// React Router 7 provides context values through context.get(contextKey).
-function createMockContext({
-  headscale,
+function createContext({
   auth,
   localAdmin,
 }: {
-  headscale: MockHeadscale;
-  auth: MockAuth;
-  localAdmin?: MockLocalAdmin;
+  auth: { createPasswordSession: ReturnType<typeof vi.fn> };
+  localAdmin?: {
+    state: "enabled";
+    value: { authenticate: ReturnType<typeof vi.fn> };
+  };
 }) {
   return {
-    get: (context: typeof authContext | typeof headscaleContext | typeof localAdminContext) => {
+    get(context: unknown) {
       if (context === authContext) return auth;
-      if (context === headscaleContext) return headscale;
+      if (context === headscaleContext) return {};
       if (context === localAdminContext) {
-        return localAdmin || { state: "disabled", reason: "Not configured" };
+        return localAdmin ?? { state: "disabled" as const, reason: "Not configured" };
       }
       return undefined;
     },
   };
 }
 
-// Mock the log module to avoid console spam during tests
 vi.mock("~/utils/log", () => ({
   default: {
     warn: vi.fn(),
@@ -70,165 +39,112 @@ vi.mock("~/utils/log", () => ({
   },
 }));
 
-describe("Password login action", () => {
-  test("returns error when username is empty string", async () => {
+describe("password login action", () => {
+  test("rejects an empty username", async () => {
     const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("", "some-password");
-    const request = mockRequest(formData);
 
-    const mockContext = createMockContext({
-      headscale: { passwordLogin: vi.fn() },
-      auth: { createPasswordSession: vi.fn() },
-    });
-
-    const result = (await loginAction({
-      request,
-      context: mockContext,
+    const result = await loginAction({
+      request: passwordRequest("", "some-password"),
+      context: createContext({ auth: { createPasswordSession: vi.fn() } }),
       params: {},
-    } as any)) as LoginResult;
+    } as never);
 
-    expect(result.success).toBe(false);
-    expect(result.message).toContain("Username cannot be empty");
+    expect(result).toMatchObject({
+      success: false,
+      message: "Username cannot be empty. Please enter a valid username.",
+    });
   });
 
-  test("returns error when password is empty string", async () => {
+  test("rejects an empty password", async () => {
     const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("testuser", "");
-    const request = mockRequest(formData);
 
-    const mockContext = createMockContext({
-      headscale: { passwordLogin: vi.fn() },
-      auth: { createPasswordSession: vi.fn() },
-    });
-
-    const result = (await loginAction({
-      request,
-      context: mockContext,
+    const result = await loginAction({
+      request: passwordRequest("admin", ""),
+      context: createContext({ auth: { createPasswordSession: vi.fn() } }),
       params: {},
-    } as any)) as LoginResult;
+    } as never);
 
-    expect(result.success).toBe(false);
-    expect(result.message).toContain("Password cannot be empty");
+    expect(result).toMatchObject({
+      success: false,
+      message: "Password cannot be empty. Please enter a valid password.",
+    });
   });
 
-  test("returns error when credentials are invalid (401)", async () => {
+  test("returns the local administrator authentication error", async () => {
     const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("testuser", "wrong-password");
-    const request = mockRequest(formData);
-
-    const mockPasswordLogin = vi.fn().mockRejectedValue({
-      data: {
-        requestUrl: "POST /api/v1/headplane/login",
-        statusCode: 401,
-        rawData: "Unauthorized",
-        data: null,
-      },
-    });
-
-    const mockContext = createMockContext({
-      headscale: { passwordLogin: mockPasswordLogin },
-      auth: { createPasswordSession: vi.fn() },
-    });
-
-    const result = (await loginAction({
-      request,
-      context: mockContext,
-      params: {},
-    } as any)) as LoginResult;
-
-    expect(result.success).toBe(false);
-    expect(result.message).toContain("Invalid password");
-  });
-
-  test("returns error when rate limited (429)", async () => {
-    const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("testuser", "some-password");
-    const request = mockRequest(formData);
-
-    const mockPasswordLogin = vi.fn().mockRejectedValue({
-      data: {
-        requestUrl: "POST /api/v1/headplane/login",
-        statusCode: 429,
-        rawData: "Too Many Requests",
-        data: null,
-      },
-    });
-
-    const mockContext = createMockContext({
-      headscale: { passwordLogin: mockPasswordLogin },
-      auth: { createPasswordSession: vi.fn() },
-    });
-
-    const result = (await loginAction({
-      request,
-      context: mockContext,
-      params: {},
-    } as any)) as LoginResult;
-
-    expect(result.success).toBe(false);
-    expect(result.message).toContain("Too many failed attempts");
-  });
-
-  test("returns error when password auth not configured (503)", async () => {
-    const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("testuser", "some-password");
-    const request = mockRequest(formData);
-
-    const mockPasswordLogin = vi.fn().mockRejectedValue({
-      data: {
-        requestUrl: "POST /api/v1/headplane/login",
-        statusCode: 503,
-        rawData: "Service Unavailable",
-        data: null,
-      },
-    });
-
-    const mockContext = createMockContext({
-      headscale: { passwordLogin: mockPasswordLogin },
-      auth: { createPasswordSession: vi.fn() },
-    });
-
-    const result = (await loginAction({
-      request,
-      context: mockContext,
-      params: {},
-    } as any)) as LoginResult;
-
-    expect(result.success).toBe(false);
-    expect(result.message).toContain("not configured");
-  });
-
-  test("successfully logs in with valid username and password", async () => {
-    const { loginAction } = await import("~/routes/auth/login/action");
-    const formData = mockPasswordFormData("testuser", "valid-password");
-    const request = mockRequest(formData);
-
-    const futureTimestamp = Math.floor(Date.now() / 1000) + 86400;
-    const mockPasswordLogin = vi.fn().mockResolvedValue({
-      token: "mock-session-token-12345",
-      username: "testuser",
-      expires_at: futureTimestamp,
-    });
-
-    const mockCreateSession = vi.fn().mockResolvedValue("session-cookie");
-
-    const mockContext = createMockContext({
-      headscale: { passwordLogin: mockPasswordLogin },
-      auth: { createPasswordSession: mockCreateSession },
+    const authenticate = vi.fn().mockResolvedValue({
+      success: false,
+      error: "Invalid username or password",
     });
 
     const result = await loginAction({
-      request,
-      context: mockContext,
+      request: passwordRequest("admin", "incorrect-password"),
+      context: createContext({
+        auth: { createPasswordSession: vi.fn() },
+        localAdmin: { state: "enabled", value: { authenticate } },
+      }),
       params: {},
-    } as any);
+    } as never);
 
-    expect(result).toBeDefined();
-    expect(mockPasswordLogin).toHaveBeenCalledWith("testuser", "valid-password");
-    expect(mockCreateSession).toHaveBeenCalledWith(
-      "mock-session-token-12345",
-      "testuser",
-      expect.any(Number),
-    );
+    expect(authenticate).toHaveBeenCalledWith("admin", "incorrect-password");
+    expect(result).toMatchObject({ success: false, message: "Invalid username or password" });
+  });
+
+  test("returns the local administrator rate-limit error", async () => {
+    const { loginAction } = await import("~/routes/auth/login/action");
+    const authenticate = vi.fn().mockResolvedValue({
+      success: false,
+      error: "Too many failed attempts. Please try again later.",
+    });
+
+    const result = await loginAction({
+      request: passwordRequest("admin", "some-password"),
+      context: createContext({
+        auth: { createPasswordSession: vi.fn() },
+        localAdmin: { state: "enabled", value: { authenticate } },
+      }),
+      params: {},
+    } as never);
+
+    expect(result).toMatchObject({
+      success: false,
+      message: "Too many failed attempts. Please try again later.",
+    });
+  });
+
+  test("rejects password login when no local administrator is configured", async () => {
+    const { loginAction } = await import("~/routes/auth/login/action");
+
+    const result = await loginAction({
+      request: passwordRequest("admin", "some-password"),
+      context: createContext({ auth: { createPasswordSession: vi.fn() } }),
+      params: {},
+    } as never);
+
+    expect(result).toMatchObject({
+      success: false,
+      message: "Password authentication is not available",
+    });
+  });
+
+  test("creates a password session after local administrator authentication", async () => {
+    const { loginAction } = await import("~/routes/auth/login/action");
+    const authenticate = vi.fn().mockResolvedValue({ success: true });
+    const createPasswordSession = vi.fn().mockResolvedValue("password-session-cookie");
+
+    const result = await loginAction({
+      request: passwordRequest("admin", "valid-password"),
+      context: createContext({
+        auth: { createPasswordSession },
+        localAdmin: { state: "enabled", value: { authenticate } },
+      }),
+      params: {},
+    } as never);
+
+    expect(authenticate).toHaveBeenCalledWith("admin", "valid-password");
+    expect(createPasswordSession).toHaveBeenCalledWith("local-admin-token", "admin", 86_400_000);
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).headers.get("Location")).toBe("/machines");
+    expect((result as Response).headers.get("Set-Cookie")).toBe("password-session-cookie");
   });
 });

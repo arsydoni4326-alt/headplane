@@ -13,6 +13,7 @@ export interface LocalAdminAuthResult {
 export interface LocalAdminService {
   authenticate(username: string, password: string): Promise<LocalAdminAuthResult>;
   getUsername(): string;
+  updateCredentials(credentials: Partial<LocalAdminConfig>): void;
 }
 
 interface RateLimitEntry {
@@ -25,7 +26,8 @@ interface RateLimitEntry {
  * Never logs secrets or hashes.
  */
 export function createLocalAdminService(config: LocalAdminConfig): LocalAdminService {
-  // Rate limiting: track failed attempts per IP/identifier
+  let currentUsername = config.username;
+  let passwordHash = config.passwordHash;
   const rateLimitMap = new Map<string, RateLimitEntry>();
   const MAX_ATTEMPTS = 5;
   const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -63,9 +65,11 @@ export function createLocalAdminService(config: LocalAdminConfig): LocalAdminSer
     rateLimitMap.delete(identifier);
   }
 
-  async function authenticate(username: string, password: string): Promise<LocalAdminAuthResult> {
-    // Use username as rate-limit identifier (in production, consider IP + username)
-    const identifier = username;
+  async function authenticate(
+    loginUsername: string,
+    password: string,
+  ): Promise<LocalAdminAuthResult> {
+    const identifier = loginUsername;
 
     if (!checkRateLimit(identifier)) {
       return {
@@ -74,12 +78,12 @@ export function createLocalAdminService(config: LocalAdminConfig): LocalAdminSer
       };
     }
 
-    if (username !== config.username) {
+    if (loginUsername !== currentUsername) {
       recordFailedAttempt(identifier);
       return { success: false, error: "Invalid username or password" };
     }
 
-    const valid = await verifyPassword(password, config.passwordHash);
+    const valid = await verifyPassword(password, passwordHash);
     if (!valid) {
       recordFailedAttempt(identifier);
       return { success: false, error: "Invalid username or password" };
@@ -90,11 +94,22 @@ export function createLocalAdminService(config: LocalAdminConfig): LocalAdminSer
   }
 
   function getUsername(): string {
-    return config.username;
+    return currentUsername;
+  }
+
+  function updateCredentials(credentials: Partial<LocalAdminConfig>): void {
+    if (credentials.username !== undefined) {
+      currentUsername = credentials.username;
+    }
+    if (credentials.passwordHash !== undefined) {
+      passwordHash = credentials.passwordHash;
+    }
+    rateLimitMap.clear();
   }
 
   return {
     authenticate,
     getUsername,
+    updateCredentials,
   };
 }

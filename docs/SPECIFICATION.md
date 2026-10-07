@@ -30,6 +30,11 @@ functionality of the official Tailscale admin console.
 - **FR-1.4**: New OIDC users receive a configurable default role, optionally
   mapped from an IdP claim (`oidc.role_claim`). The `owner` role is only ever
   granted to the first bootstrapped user.
+- **FR-1.5**: When `user` configures the single local administrator, the
+  administrator can update their username, display name, HTTPS avatar URL, and
+  password at `/admin/admin/users`. Password changes require current-password
+  verification, use bcrypt cost 12, and invalidate password sessions. Updates
+  must atomically replace the configuration file and retain a private backup.
 
 ### FR-2: Machine Management
 

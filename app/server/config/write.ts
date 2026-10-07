@@ -1,4 +1,5 @@
-import { writeFile, rename, unlink } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { open, readFile, rename, unlink, writeFile } from "node:fs/promises";
 
 import { dump } from "js-yaml";
 
@@ -6,6 +7,25 @@ import log from "~/utils/log";
 
 import type { HeadplaneConfig, PartialHeadplaneConfig } from "./config-schema";
 import { ConfigError } from "./error";
+
+export interface UpdateConfigOptions {
+  backup?: boolean;
+}
+
+export async function backupConfig(configPath: string): Promise<string> {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupPath = `${configPath}.${timestamp}-${randomUUID()}.backup`;
+
+  try {
+    await writeFile(backupPath, await readFile(configPath), { flag: "wx", mode: 0o600 });
+    return backupPath;
+  } catch (error) {
+    throw ConfigError.from("CONFIG_WRITE_FAILED", {
+      path: configPath,
+      error: `could not create backup: ${String(error)}`,
+    });
+  }
+}
 
 /**
  * Atomically writes configuration to a YAML file.
@@ -22,7 +42,6 @@ export async function writeConfig(
   const tempPath = `${configPath}.tmp`;
 
   try {
-    // Convert config to YAML
     const yamlContent = dump(config, {
       indent: 2,
       lineWidth: 100,
@@ -30,10 +49,12 @@ export async function writeConfig(
       sortKeys: false,
     });
 
-    // Write to temporary file
     await writeFile(tempPath, yamlContent, { encoding: "utf8", mode: 0o600 });
 
-    // Atomically rename to target path
+    const file = await open(tempPath, "r+");
+    await file.datasync();
+    await file.close();
+
     await rename(tempPath, configPath);
 
     log.info("config", "Configuration written to %s", configPath);
@@ -63,7 +84,8 @@ export async function writeConfig(
 export async function updateConfig(
   configPath: string,
   updates: PartialHeadplaneConfig,
-): Promise<void> {
+  options: UpdateConfigOptions = {},
+): Promise<string | undefined> {
   const { loadConfigFile } = await import("./load");
 
   // Read current config
@@ -75,11 +97,23 @@ export async function updateConfig(
     });
   }
 
-  // Deep merge updates into current config
   const updatedConfig = deepMerge(currentConfig, updates);
+  removeSupersededSecretPaths(updatedConfig, updates);
 
-  // Write updated config atomically
+  const backupPath = options.backup ? await backupConfig(configPath) : undefined;
   await writeConfig(configPath, updatedConfig);
+  return backupPath;
+}
+
+function removeSupersededSecretPaths(
+  config: PartialHeadplaneConfig,
+  updates: PartialHeadplaneConfig,
+): void {
+  if (updates.user?.password === undefined || !config.user) {
+    return;
+  }
+
+  delete (config.user as Record<string, unknown>).password_path;
 }
 
 /**
@@ -103,7 +137,9 @@ function deepMerge<T>(target: T, source: Partial<T>): T {
         !Array.isArray(targetValue)
       ) {
         result[key] = deepMerge(targetValue, sourceValue) as T[Extract<keyof T, string>];
-      } else if (sourceValue !== undefined) {
+      } else if (sourceValue === undefined) {
+        delete result[key];
+      } else {
         result[key] = sourceValue as T[Extract<keyof T, string>];
       }
     }

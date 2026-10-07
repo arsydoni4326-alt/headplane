@@ -101,6 +101,11 @@ subdirectories. Feature changes must update the relevant pages here.
    `app/server/web/roles.ts`.
 4. Headscale API access uses `headscale.api_key`; proxy-auth deployments
    instead trust identity headers from `allowed_cidrs`.
+5. When `user` configures a local administrator, `/admin/admin/users` writes
+   profile and bcrypt credential updates through `app/server/config/write.ts`.
+   The writer creates a mode-0600 backup, syncs a temporary replacement, and
+   atomically renames it. Username and password changes invalidate every
+   password session and refresh the in-memory local-admin credentials.
 
 ### Management operations (machines, users, ACLs, DNS)
 

@@ -16,6 +16,9 @@
 #   password: "$2b$12$..."
 #   # Or use password_path to load from a managed secret file:
 #   # password_path: "${CREDENTIALS_DIRECTORY}/headplane-admin-password"
+#   # Optional profile fields, editable from /admin/admin/users:
+#   # name: "Local Administrator"
+#   # avatar: "https://example.com/avatar.png"
 
 server:
   # These are the default values, change them as needed

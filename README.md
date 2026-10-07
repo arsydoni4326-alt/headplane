@@ -31,10 +31,13 @@ These are some of the features that Headplane offers:
 - Support for OpenID Connect (OIDC) as a login provider
 - The ability to edit DNS settings and automatically provision Headscale
 - Configurability for Headscale's settings
+- A single local administrator mode with an editable profile and password
 
 ## Deployment
 
 Refer to the [website](https://headplane.net) for detailed installation instructions.
+Local administrator profile configuration is documented in
+[the configuration guide](./docs/configuration/index.md#local-administrator-profile).
 
 ## Versioning
 

@@ -1,313 +1,214 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { action, loader } from "~/routes/admin/users/route";
-import { appConfigContext, authContext } from "~/server/context";
+const mocks = vi.hoisted(() => ({
+  hashPassword: vi.fn(),
+  updateConfig: vi.fn(),
+}));
+
+vi.mock("~/server/auth/bcrypt-utils", () => ({ hashPassword: mocks.hashPassword }));
+vi.mock("~/server/config/write", () => ({ updateConfig: mocks.updateConfig }));
+
+import { action, loader } from "~/routes/admin/admin/users/route";
+import { appConfigContext, authContext, localAdminContext } from "~/server/context";
 import type { Principal } from "~/server/web/auth";
-import { Capabilities } from "~/server/web/roles";
 
-// Mock context utilities
-const mockAuth = {
-  require: vi.fn(),
-  can: vi.fn(),
-  getHeadscaleApiKey: vi.fn(),
+const principal: Principal = {
+  kind: "password",
+  sessionId: "password-session",
+  token: "local-admin-token",
+  username: "admin",
 };
 
-const mockConfig = {
-  headscale: {
-    url: "http://localhost:8080",
-  },
-};
+function createServices(overrides: { admin?: boolean; username?: string; user?: object } = {}) {
+  const username = overrides.username ?? "admin";
+  const auth = {
+    require: vi.fn().mockResolvedValue(principal),
+    can: vi.fn().mockReturnValue(overrides.admin ?? true),
+    destroySession: vi.fn().mockResolvedValue("_hp_auth=; Max-Age=0"),
+    invalidatePasswordSessions: vi.fn().mockResolvedValue(1),
+  };
+  const localAdmin = {
+    authenticate: vi.fn().mockResolvedValue({ success: true }),
+    getUsername: vi.fn().mockReturnValue(username),
+    updateCredentials: vi.fn(),
+  };
+  const config = {
+    user: overrides.user ?? {
+      username,
+      password: "$2b$12$01234567890123456789012345678901234567890123456789012",
+    },
+  };
 
-// Create mock context following the pattern from other tests
-function createMockContext() {
+  return { auth, config, localAdmin };
+}
+
+function createContext(services: ReturnType<typeof createServices>) {
   return {
-    get: (context: typeof authContext | typeof appConfigContext) => {
-      if (context === authContext) return mockAuth;
-      if (context === appConfigContext) return mockConfig;
-      return null;
+    get(context: unknown) {
+      if (context === authContext) return services.auth;
+      if (context === appConfigContext) return services.config;
+      if (context === localAdminContext)
+        return { state: "enabled" as const, value: services.localAdmin };
+      return undefined;
     },
   };
 }
 
-// Mock fetch globally
-global.fetch = vi.fn();
+function profileRequest(fields: Record<string, string>) {
+  const form = new FormData();
+  form.set("_action", "update-profile");
+  for (const [key, value] of Object.entries(fields)) {
+    form.set(key, value);
+  }
 
-describe("Admin Users Route", () => {
+  return new Request("http://headplane.test/admin/admin/users", { method: "POST", body: form });
+}
+
+function passwordRequest(fields: Record<string, string>) {
+  const form = new FormData();
+  form.set("_action", "change-password");
+  for (const [key, value] of Object.entries(fields)) {
+    form.set(key, value);
+  }
+
+  return new Request("http://headplane.test/admin/admin/users", { method: "POST", body: form });
+}
+
+describe("admin profile route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("HEADPLANE_CONFIG_PATH", "/test/headplane.yaml");
+    mocks.updateConfig.mockResolvedValue("/test/headplane.yaml.backup");
+    mocks.hashPassword.mockResolvedValue(
+      "$2b$12$01234567890123456789012345678901234567890123456789012",
+    );
   });
 
-  describe("loader", () => {
-    test("allows password-authenticated admin to access user management", async () => {
-      const passwordPrincipal: Principal = {
-        kind: "password",
-        sessionId: "test-session",
-        token: "session-token-123",
-        username: "admin-user",
-      };
+  test("loads editable empty optional profile fields", async () => {
+    const services = createServices({ user: undefined });
 
-      mockAuth.require.mockResolvedValue(passwordPrincipal);
-      mockAuth.can.mockReturnValue(true);
-      mockAuth.getHeadscaleApiKey.mockReturnValue("session-token-123");
+    const result = await loader({
+      request: new Request("http://headplane.test/admin/admin/users"),
+      context: createContext(services),
+      params: {},
+    } as never);
 
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          users: [{ id: "u1", username: "user1", role: "admin", createdAt: "2024-01-01" }],
-        }),
-      });
+    expect(result).toEqual({ profile: { username: "admin", name: "", avatar: "" } });
+  });
 
-      const request = new Request("http://localhost/admin/users");
-      const context = createMockContext();
-      const result = await loader({ request, context, params: {} } as any);
+  test("rejects an insecure avatar URL before updating the configuration", async () => {
+    const services = createServices();
 
-      expect(mockAuth.can).toHaveBeenCalledWith(passwordPrincipal, Capabilities.configure_iam);
-      expect(mockAuth.getHeadscaleApiKey).toHaveBeenCalledWith(passwordPrincipal);
-      expect(result).toHaveProperty("users");
-      expect(result).toHaveProperty("authToken", "session-token-123");
+    const result = await action({
+      request: profileRequest({ username: "admin", avatar: "http://example.com/avatar.png" }),
+      context: createContext(services),
+      params: {},
+    } as never);
+
+    expect(result).toMatchObject({ success: false, error: "Avatar URL must use HTTPS" });
+    expect(mocks.updateConfig).not.toHaveBeenCalled();
+  });
+
+  test("persists profile values and clears optional fields", async () => {
+    const services = createServices();
+
+    const result = await action({
+      request: profileRequest({ username: "admin", name: "", avatar: "" }),
+      context: createContext(services),
+      params: {},
+    } as never);
+
+    expect(result).toMatchObject({ success: true, actionType: "update-profile" });
+    expect(mocks.updateConfig).toHaveBeenCalledWith(
+      "/test/headplane.yaml",
+      { user: { username: "admin", name: undefined, avatar: undefined } },
+      { backup: true },
+    );
+    expect(services.localAdmin.updateCredentials).toHaveBeenCalledWith({ username: "admin" });
+    expect(services.auth.invalidatePasswordSessions).not.toHaveBeenCalled();
+    expect(services.config.user).toMatchObject({ username: "admin" });
+    expect(services.config.user).not.toHaveProperty("name");
+    expect(services.config.user).not.toHaveProperty("avatar");
+  });
+
+  test("invalidates password sessions when the username changes", async () => {
+    const services = createServices();
+
+    const result = await action({
+      request: profileRequest({ username: "operator", name: "Operator" }),
+      context: createContext(services),
+      params: {},
+    } as never);
+
+    expect(result).toMatchObject({
+      type: "DataWithResponseInit",
+      data: { success: true, requiresLogout: true },
+      init: { headers: { "Set-Cookie": "_hp_auth=; Max-Age=0" } },
     });
+    expect(services.auth.invalidatePasswordSessions).toHaveBeenCalledOnce();
+    expect(services.auth.destroySession).toHaveBeenCalledOnce();
+    expect(services.localAdmin.updateCredentials).toHaveBeenCalledWith({ username: "operator" });
+  });
 
-    test("allows API key-authenticated admin to access user management", async () => {
-      const apiKeyPrincipal: Principal = {
-        kind: "api_key",
-        sessionId: "test-session",
-        displayName: "API Key Admin",
-        apiKey: "api-key-456",
-      };
+  test("updates the bcrypt password and invalidates password sessions", async () => {
+    const services = createServices();
 
-      mockAuth.require.mockResolvedValue(apiKeyPrincipal);
-      mockAuth.can.mockReturnValue(true);
-      mockAuth.getHeadscaleApiKey.mockReturnValue("api-key-456");
+    const result = await action({
+      request: passwordRequest({
+        current_password: "current-password",
+        new_password: "new-password",
+        confirm_password: "new-password",
+      }),
+      context: createContext(services),
+      params: {},
+    } as never);
 
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          users: [{ id: "u1", username: "user1", role: "admin", createdAt: "2024-01-01" }],
-        }),
-      });
-
-      const request = new Request("http://localhost/admin/users");
-      const context = createMockContext();
-      const result = await loader({ request, context, params: {} } as any);
-
-      expect(mockAuth.can).toHaveBeenCalledWith(apiKeyPrincipal, Capabilities.configure_iam);
-      expect(mockAuth.getHeadscaleApiKey).toHaveBeenCalledWith(apiKeyPrincipal);
-      expect(result).toHaveProperty("users");
-      expect(result).toHaveProperty("authToken", "api-key-456");
+    expect(services.localAdmin.authenticate).toHaveBeenCalledWith("admin", "current-password");
+    expect(mocks.hashPassword).toHaveBeenCalledWith("new-password");
+    expect(mocks.updateConfig).toHaveBeenCalledWith(
+      "/test/headplane.yaml",
+      { user: { password: "$2b$12$01234567890123456789012345678901234567890123456789012" } },
+      { backup: true },
+    );
+    expect(services.localAdmin.updateCredentials).toHaveBeenCalledWith({
+      passwordHash: "$2b$12$01234567890123456789012345678901234567890123456789012",
     });
-
-    test("returns an empty user list with an error when the backend rejects the request", async () => {
-      const apiKeyPrincipal: Principal = {
-        kind: "api_key",
-        sessionId: "test-session",
-        displayName: "API Key Admin",
-        apiKey: "api-key-456",
-      };
-
-      mockAuth.require.mockResolvedValue(apiKeyPrincipal);
-      mockAuth.can.mockReturnValue(true);
-      mockAuth.getHeadscaleApiKey.mockReturnValue("api-key-456");
-
-      (global.fetch as any).mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: "Internal Server Error",
-        json: async () => ({ message: "Failed to load users: Internal Server Error" }),
-      });
-
-      const request = new Request("http://localhost/admin/users");
-      const context = createMockContext();
-      const result = await loader({ request, context, params: {} } as any);
-
-      expect(result).toMatchObject({
-        users: [],
-        error: {
-          message: "Failed to load users: Internal Server Error",
-          status: 500,
-        },
-      });
-    });
-
-    test("blocks non-admin users from accessing user management", async () => {
-      const nonAdminPrincipal: Principal = {
-        kind: "password",
-        sessionId: "test-session",
-        token: "session-token-789",
-        username: "regular-user",
-      };
-
-      mockAuth.require.mockResolvedValue(nonAdminPrincipal);
-      mockAuth.can.mockReturnValue(false);
-
-      const request = new Request("http://localhost/admin/users");
-      const context = createMockContext();
-
-      // Expect the loader to throw a Response
-      await expect(loader({ request, context, params: {} } as any)).rejects.toBeInstanceOf(
-        Response,
-      );
-
-      try {
-        await loader({ request, context, params: {} } as any);
-      } catch (response) {
-        expect(response).toBeInstanceOf(Response);
-        expect((response as Response).status).toBe(403);
-        const text = await (response as Response).text();
-        expect(text).toContain("Only administrators");
-      }
-
-      expect(global.fetch).not.toHaveBeenCalled();
+    expect(services.auth.invalidatePasswordSessions).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({
+      type: "DataWithResponseInit",
+      data: { success: true, actionType: "change-password", requiresLogout: true },
+      init: { headers: { "Set-Cookie": "_hp_auth=; Max-Age=0" } },
     });
   });
 
-  describe("action", () => {
-    test("allows password-authenticated admin to create users", async () => {
-      const passwordPrincipal: Principal = {
-        kind: "password",
-        sessionId: "test-session",
-        token: "session-token-123",
-        username: "admin-user",
-      };
+  test("requires the current password before a password update", async () => {
+    const services = createServices();
+    services.localAdmin.authenticate.mockResolvedValue({ success: false });
 
-      mockAuth.require.mockResolvedValue(passwordPrincipal);
-      mockAuth.can.mockReturnValue(true);
-      mockAuth.getHeadscaleApiKey.mockReturnValue("session-token-123");
+    const result = await action({
+      request: passwordRequest({
+        current_password: "incorrect",
+        new_password: "new-password",
+        confirm_password: "new-password",
+      }),
+      context: createContext(services),
+      params: {},
+    } as never);
 
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
+    expect(result).toMatchObject({ success: false, error: "Current password is incorrect" });
+    expect(mocks.hashPassword).not.toHaveBeenCalled();
+    expect(mocks.updateConfig).not.toHaveBeenCalled();
+  });
 
-      const formData = new FormData();
-      formData.set("_action", "create");
-      formData.set("username", "newuser");
-      formData.set("password", "password123");
-      formData.set("role", "user");
+  test("rejects non-administrators", async () => {
+    const services = createServices({ admin: false });
 
-      const request = new Request("http://localhost/admin/users", {
-        method: "POST",
-        body: formData,
-      });
-
-      const context = createMockContext();
-      const result = await action({ request, context, params: {} } as any);
-
-      expect(mockAuth.getHeadscaleApiKey).toHaveBeenCalledWith(passwordPrincipal);
-      expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8080/api/v1/headplane/users",
-        expect.objectContaining({
-          body: JSON.stringify({ username: "newuser", password: "password123", role: "user" }),
-        }),
-      );
-      expect(result).toMatchObject({ success: true });
-    });
-
-    test("allows API key-authenticated admin to create users", async () => {
-      const apiKeyPrincipal: Principal = {
-        kind: "api_key",
-        sessionId: "test-session",
-        displayName: "API Key Admin",
-        apiKey: "api-key-456",
-      };
-
-      mockAuth.require.mockResolvedValue(apiKeyPrincipal);
-      mockAuth.can.mockReturnValue(true);
-      mockAuth.getHeadscaleApiKey.mockReturnValue("api-key-456");
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
-
-      const formData = new FormData();
-      formData.set("_action", "create");
-      formData.set("username", "newuser");
-      formData.set("password", "password123");
-      formData.set("role", "user");
-
-      const request = new Request("http://localhost/admin/users", {
-        method: "POST",
-        body: formData,
-      });
-
-      const context = createMockContext();
-      const result = await action({ request, context, params: {} } as any);
-
-      expect(mockAuth.getHeadscaleApiKey).toHaveBeenCalledWith(apiKeyPrincipal);
-      expect(result).toMatchObject({ success: true });
-    });
-
-    test("sends an accepted role when updating a user", async () => {
-      const passwordPrincipal: Principal = {
-        kind: "password",
-        sessionId: "test-session",
-        token: "session-token-123",
-        username: "admin-user",
-      };
-
-      mockAuth.require.mockResolvedValue(passwordPrincipal);
-      mockAuth.can.mockReturnValue(true);
-      mockAuth.getHeadscaleApiKey.mockReturnValue("session-token-123");
-      (global.fetch as any).mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
-
-      const formData = new FormData();
-      formData.set("_action", "update");
-      formData.set("userId", "42");
-      formData.set("username", "operator");
-      formData.set("role", "admin");
-
-      const request = new Request("http://localhost/admin/users", {
-        method: "POST",
-        body: formData,
-      });
-      const result = await action({ request, context: createMockContext(), params: {} } as any);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        "http://localhost:8080/api/v1/headplane/users/42",
-        expect.objectContaining({ body: JSON.stringify({ username: "operator", role: "admin" }) }),
-      );
-      expect(result).toMatchObject({ success: true });
-    });
-
-    test("blocks non-admin users from performing actions", async () => {
-      const nonAdminPrincipal: Principal = {
-        kind: "password",
-        sessionId: "test-session",
-        token: "session-token-789",
-        username: "regular-user",
-      };
-
-      mockAuth.require.mockResolvedValue(nonAdminPrincipal);
-      mockAuth.can.mockReturnValue(false);
-
-      const formData = new FormData();
-      formData.set("_action", "create");
-      formData.set("username", "newuser");
-      formData.set("password", "password123");
-      formData.set("role", "user");
-
-      const request = new Request("http://localhost/admin/users", {
-        method: "POST",
-        body: formData,
-      });
-
-      const context = createMockContext();
-
-      // Expect the action to throw a Response
-      await expect(action({ request, context, params: {} } as any)).rejects.toBeInstanceOf(
-        Response,
-      );
-
-      try {
-        await action({ request, context, params: {} } as any);
-      } catch (response) {
-        expect(response).toBeInstanceOf(Response);
-        expect((response as Response).status).toBe(403);
-        const text = await (response as Response).text();
-        expect(text).toContain("Insufficient permissions");
-      }
-
-      expect(global.fetch).not.toHaveBeenCalled();
-    });
+    await expect(
+      loader({
+        request: new Request("http://headplane.test/admin/admin/users"),
+        context: createContext(services),
+        params: {},
+      } as never),
+    ).rejects.toMatchObject({ status: 403 });
   });
 });

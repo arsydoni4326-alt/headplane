@@ -112,8 +112,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (body.username !== undefined || body.name !== undefined || body.avatar !== undefined) {
     updates.user = {};
     if (body.username !== undefined) updates.user.username = body.username.trim();
-    if (body.name !== undefined) updates.user.name = body.name.trim();
-    if (body.avatar !== undefined) updates.user.avatar = body.avatar.trim();
+    if (body.name !== undefined) updates.user.name = body.name.trim() || undefined;
+    if (body.avatar !== undefined) updates.user.avatar = body.avatar.trim() || undefined;
   }
 
   // Get config path
@@ -123,18 +123,17 @@ export async function action({ request, context }: Route.ActionArgs) {
       : "/etc/headplane/config.yaml";
 
   try {
-    // Atomically update config.yaml
-    await updateConfig(configPath, updates);
+    await updateConfig(configPath, updates, { backup: true });
 
     log.info(
-      "settings",
+      "config",
       "User settings updated for: %s",
       updates.user?.username || config.user?.username,
     );
 
     return data({ success: true }, { status: 200 });
   } catch (error) {
-    log.error("settings", "Failed to update settings: %s", String(error));
+    log.error("config", "Failed to update settings: %s", String(error));
     return data({ error: "Failed to update settings" }, { status: 500 });
   }
 }
