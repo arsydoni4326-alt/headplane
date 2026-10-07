@@ -169,7 +169,7 @@ export default function AdminRoute({ loaderData, actionData }: Route.ComponentPr
         this mode.
       </Notice>
 
-      <Card className="mt-6 max-w-2xl">
+      <Card className="mt-6 w-full max-w-none">
         <Card.Title>Reset Password</Card.Title>
         <Card.Text>
           Change your administrator password. You will be logged out after resetting your password.

@@ -1,6 +1,66 @@
 import { expect, test } from "./fixtures";
 
 test.describe("Admin API Keys", () => {
+  test("uses the full content width without horizontal overflow at all supported viewports", async ({
+    authedPage: page,
+  }) => {
+    await page.goto("/admin");
+
+    const resetPasswordCard = page.getByRole("heading", { name: "Reset Password" }).locator("..");
+    const apiKeysCard = page.getByRole("heading", { name: "API Keys" }).locator("xpath=../../..");
+
+    await expect(resetPasswordCard).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create API Key" })).toBeVisible();
+    await expect(apiKeysCard).toBeVisible();
+
+    for (const viewport of [
+      { width: 1920, height: 1080 },
+      { width: 1440, height: 900 },
+      { width: 1280, height: 800 },
+      { width: 1024, height: 768 },
+      { width: 768, height: 1024 },
+      { width: 428, height: 926 },
+      { width: 375, height: 812 },
+    ]) {
+      await page.setViewportSize(viewport);
+
+      const cardMeasurements = await Promise.all(
+        [resetPasswordCard, apiKeysCard].map((card) =>
+          card.evaluate((element) => {
+            const main = document.querySelector("main");
+            if (!main) {
+              throw new Error("Expected the app layout main element");
+            }
+
+            const mainRect = main.getBoundingClientRect();
+            const cardRect = element.getBoundingClientRect();
+            const mainStyles = getComputedStyle(main);
+            const contentLeft = mainRect.left + Number.parseFloat(mainStyles.paddingLeft);
+            const contentRight = mainRect.right - Number.parseFloat(mainStyles.paddingRight);
+
+            return {
+              cardLeft: cardRect.left,
+              cardRight: cardRect.right,
+              contentLeft,
+              contentRight,
+            };
+          }),
+        ),
+      );
+
+      for (const measurement of cardMeasurements) {
+        expect(Math.abs(measurement.cardLeft - measurement.contentLeft)).toBeLessThanOrEqual(1);
+        expect(Math.abs(measurement.cardRight - measurement.contentRight)).toBeLessThanOrEqual(1);
+      }
+
+      const documentWidth = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      }));
+      expect(documentWidth.scrollWidth).toBeLessThanOrEqual(documentWidth.clientWidth);
+    }
+  });
+
   test("displays list of API keys with metadata", async ({ page, apiKey }) => {
     // Login with API key
     await page.goto("/admin/login");

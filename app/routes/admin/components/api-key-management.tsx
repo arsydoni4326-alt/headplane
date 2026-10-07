@@ -119,7 +119,7 @@ export default function ApiKeyManagement({
 
   if (loading) {
     return (
-      <Card className="mt-6">
+      <Card className="mt-6 w-full max-w-none">
         <Card.Title>API Keys</Card.Title>
         <p className="mt-4 text-sm text-mist-600">Loading API keys...</p>
       </Card>
@@ -128,7 +128,7 @@ export default function ApiKeyManagement({
 
   return (
     <>
-      <Card className="mt-6">
+      <Card className="mt-6 w-full max-w-none">
         <div className="flex items-center justify-between">
           <div>
             <Card.Title>API Keys</Card.Title>
