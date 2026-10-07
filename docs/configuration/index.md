@@ -19,6 +19,12 @@ and proxy authentication. `user.password` must be a bcrypt cost-12 hash; use
 `headplane hash-password --password-stdin` to create one. `name` and `avatar`
 are optional profile fields, and avatars must use an HTTPS URL.
 
+## Local administrator avatar
+
+When using the optional local `user` authentication block, you may set
+`user.avatar` to an HTTPS image URL or a path served by Headplane or its reverse
+proxy:
+
 ```yaml
 user:
   username: admin
@@ -37,6 +43,15 @@ ends all password-authenticated sessions, including the current session.
 password from the profile page replaces `password_path` with the new bcrypt
 hash in `user.password`; use the password reset CLI and an updated secret file
 instead when the password must remain externally managed.
+avatar: "https://example.com/avatar.png"
+
+````
+
+The field is optional and does not change local authentication. Headplane shows
+the avatar in the user menu when the browser loads it successfully; otherwise,
+including when it is unset, missing, blocked by CORS, or invalid, it displays
+the standard user icon instead. Use a same-origin path or an image host that
+allows the browser to fetch the image from your Headplane origin.
 
 ## Environment Variables
 
@@ -180,4 +195,4 @@ http:
           - "https://headscale.tale.me"
         accessControlMaxAge: 100
         addVaryHeader: true
-```
+````

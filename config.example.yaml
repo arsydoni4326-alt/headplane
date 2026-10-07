@@ -18,6 +18,9 @@
 #   # password_path: "${CREDENTIALS_DIRECTORY}/headplane-admin-password"
 #   # Optional profile fields, editable from /admin/admin/users:
 #   # name: "Local Administrator"
+#   # Optional avatar shown in the user menu. Use an HTTPS URL or a path served
+#   # by Headplane/reverse proxy. The standard user icon is shown if it is
+#   # omitted or the browser cannot load it.
 #   # avatar: "https://example.com/avatar.png"
 
 server:
