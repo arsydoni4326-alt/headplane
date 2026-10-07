@@ -44,6 +44,7 @@ export default [
     ...prefix("/admin", [
       route("/", "routes/admin/route.tsx"),
       route("/users", "routes/admin/users/route.tsx"),
+      route("/admin/users", "routes/admin/admin/users/route.tsx"),
     ]),
 
     ...prefix("/settings", [
