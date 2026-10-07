@@ -62,6 +62,26 @@ describe("Configuration YAML file loading", () => {
     expect(config.server.cookie_secret).toBe("thirtytwo-character-cookiesecret");
   });
 
+  test("accepts an optional local administrator avatar", async () => {
+    const filePath = "/config/local-admin-avatar.yaml";
+    writeYaml(filePath, {
+      headscale: {
+        url: "http://localhost:8080",
+      },
+      server: {
+        cookie_secret: "thirtytwo-character-cookiesecret",
+      },
+      user: {
+        avatar: "/avatars/admin.png",
+        password: "$2b$12$LQv3c1yqZawN0n0o6HjJ7uVUy3e47qS2xJpKm1dHVCt9FAEsvw5pi",
+        username: "admin",
+      },
+    });
+
+    const config = await loadConfig(filePath);
+    expect(config.user).toMatchObject({ avatar: "/avatars/admin.png", username: "admin" });
+  });
+
   test("should throw error for missing required fields", async () => {
     const filePath = "/config/invalid-config.yaml";
     writeYaml(filePath, {

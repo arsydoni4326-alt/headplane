@@ -16,6 +16,10 @@
 #   password: "$2b$12$..."
 #   # Or use password_path to load from a managed secret file:
 #   # password_path: "${CREDENTIALS_DIRECTORY}/headplane-admin-password"
+#   # Optional avatar shown in the user menu. Use an HTTPS URL or a path served
+#   # by Headplane/reverse proxy. The standard user icon is shown if it is
+#   # omitted or the browser cannot load it.
+#   # avatar: "https://example.com/avatar.png"
 
 server:
   # These are the default values, change them as needed

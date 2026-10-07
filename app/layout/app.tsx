@@ -58,7 +58,12 @@ export async function loader({ request, context }: Route.LoaderArgs) {
           username: principal.profile.username,
         }
       : principal.kind === "password"
-        ? { name: principal.username, subject: "password", username: principal.username }
+        ? {
+            name: principal.username,
+            picture: config.user?.avatar,
+            subject: "password",
+            username: principal.username,
+          }
         : { name: principal.displayName, subject: "api_key" };
 
     // MARK: The session should stay valid if Headscale isn't healthy

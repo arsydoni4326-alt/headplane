@@ -12,6 +12,25 @@ Headplane also stores stuff in the `/var/lib/headplane` directory by default.
 This can be configured on a per-section basis in the configuration file, but
 it is very important this directory is persistent and writable by Headplane.
 
+## Local administrator avatar
+
+When using the optional local `user` authentication block, you may set
+`user.avatar` to an HTTPS image URL or a path served by Headplane or its reverse
+proxy:
+
+```yaml
+user:
+  username: admin
+  password: "$2b$12$..."
+  avatar: "https://example.com/avatar.png"
+```
+
+The field is optional and does not change local authentication. Headplane shows
+the avatar in the user menu when the browser loads it successfully; otherwise,
+including when it is unset, missing, blocked by CORS, or invalid, it displays
+the standard user icon instead. Use a same-origin path or an image host that
+allows the browser to fetch the image from your Headplane origin.
+
 ## Environment Variables
 
 It is also possible to override the configuration file using environment variables.

@@ -120,11 +120,13 @@ const assignableRole = '"admin" | "network_admin" | "it_admin" | "auditor" | "vi
 const userConfig = type({
   username: "string",
   password: "string",
+  avatar: "string?",
 });
 
 const partialUserConfig = type({
   username: "string?",
   password: "string?",
+  avatar: "string?",
 });
 
 const oidcConfig = type({
