@@ -42,9 +42,7 @@ export default function ApiKeyManagement({
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${headscaleUrl}/api/v1/apikey`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      const response = await fetch(`/api/admin/apikeys`);
 
       if (!response.ok) {
         throw new Error(`Failed to load API keys: ${response.statusText}`);
@@ -64,10 +62,9 @@ export default function ApiKeyManagement({
       const expiration = new Date();
       expiration.setDate(expiration.getDate() + expirationDays);
 
-      const response = await fetch(`${headscaleUrl}/api/v1/apikey`, {
+      const response = await fetch(`/api/admin/apikeys`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${authToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ expiration: expiration.toISOString() }),
@@ -88,10 +85,9 @@ export default function ApiKeyManagement({
   async function handleDeleteApiKey(key: ApiKey) {
     try {
       const response = await fetch(
-        `${headscaleUrl}/api/v1/apikey/${encodeURIComponent(key.prefix)}`,
+        `/api/admin/apikeys?prefix=${encodeURIComponent(key.prefix)}`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${authToken}` },
         },
       );
 
