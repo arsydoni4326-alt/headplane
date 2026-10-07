@@ -59,7 +59,7 @@ const tabs = [
   { to: "/derp", icon: Radio, label: "DERP", key: "audit" },
   { to: "/instances", icon: Server, label: "Instances", key: "settings" },
   { to: "/audit", icon: History, label: "Audit", key: "audit" },
-  { to: "/admin/users", icon: ShieldAlert, label: "Admin", key: "admin" },
+  { to: "/admin", icon: ShieldAlert, label: "Admin", key: "admin" },
   { to: "/settings", icon: Settings, label: "Settings", key: "settings" },
 ] as const;
 
