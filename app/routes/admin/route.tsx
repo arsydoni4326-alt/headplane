@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Form, redirect, Link } from "react-router";
+import { Form, redirect, Link, useFetcher } from "react-router";
 
 import Button from "~/components/button";
 import Card from "~/components/card";
 import Notice from "~/components/notice";
-import { appConfigContext, authContext, localAdminContext } from "~/server/context";
+import { appConfigContext, authContext, localAdminContext, headscaleContext, auditContext } from "~/server/context";
 import { isAdmin, createUnauthorizedResponse } from "~/utils/auth";
+import log from "~/utils/log";
 
 import type { Route } from "./+types/route";
 import ApiKeyManagement from "./components/api-key-management";
@@ -14,6 +15,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const auth = context.get(authContext);
   const config = context.get(appConfigContext);
   const localAdmin = context.get(localAdminContext);
+  const headscale = context.get(headscaleContext);
   const principal = await auth.require(request);
 
   if (!isAdmin(auth, principal)) {
@@ -32,17 +34,30 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   const authToken = auth.getHeadscaleApiKey(principal);
 
+  // Fetch API keys server-side
+  let apiKeys: any[] = [];
+  if (authToken) {
+    try {
+      apiKeys = await headscale.client(authToken).apiKeys.list();
+    } catch (error) {
+      log.error("admin", "Failed to load API keys: %s", String(error));
+    }
+  }
+
   return {
     username: localAdmin.value.getUsername(),
     authToken,
     headscaleUrl: config.headscale.url,
     configuredApiKey: config.headscale.api_key,
+    apiKeys,
   };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
   const auth = context.get(authContext);
   const localAdmin = context.get(localAdminContext);
+  const headscale = context.get(headscaleContext);
+  const audit = context.get(auditContext);
   const principal = await auth.require(request);
 
   if (!isAdmin(auth, principal)) {
@@ -58,6 +73,14 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (actionType === "reset-password") {
     return await handlePasswordReset(formData, localAdmin, auth);
+  }
+
+  if (actionType === "create-apikey") {
+    return await handleCreateApiKey(formData, headscale, audit, auth, principal, request);
+  }
+
+  if (actionType === "delete-apikey") {
+    return await handleDeleteApiKey(formData, headscale, audit, auth, principal, request);
   }
 
   return { success: false, error: "Unknown action" };
@@ -145,6 +168,120 @@ async function handlePasswordReset(formData: FormData, localAdmin: any, auth: an
     }
     console.error("Error updating config:", error);
     return { success: false, error: "Failed to update password. See server logs for details." };
+  }
+}
+
+async function handleCreateApiKey(
+  formData: FormData,
+  headscale: any,
+  audit: any,
+  auth: any,
+  principal: any,
+  request: Request,
+) {
+  const expirationDays = Number(formData.get("expiration_days"));
+  
+  if (!expirationDays || expirationDays < 1) {
+    return { success: false, error: "Invalid expiration days" };
+  }
+
+  const authToken = auth.getHeadscaleApiKey(principal);
+  if (!authToken) {
+    return { success: false, error: "No API key available" };
+  }
+
+  try {
+    const expiration = new Date();
+    expiration.setDate(expiration.getDate() + expirationDays);
+
+    const result = await headscale.client(authToken).apiKeys.create(expiration);
+
+    await audit.log({
+      actor: principal.username ?? principal.userId,
+      action: "apikey.create",
+      resource: "apikeys",
+      success: true,
+      metadata: { expiration: expiration.toISOString() },
+    });
+
+    log.info(
+      "apikeys",
+      "API key created by %s, expires: %s",
+      principal.username ?? principal.userId,
+      expiration.toISOString(),
+    );
+
+    return { success: true, apiKey: result.apiKey };
+  } catch (error) {
+    log.error("apikeys", "Failed to create API key: %s", String(error));
+
+    await audit.log({
+      actor: principal.username ?? principal.userId,
+      action: "apikey.create",
+      resource: "apikeys",
+      success: false,
+      metadata: { error: String(error) },
+    });
+
+    return { success: false, error: "Failed to create API key" };
+  }
+}
+
+async function handleDeleteApiKey(
+  formData: FormData,
+  headscale: any,
+  audit: any,
+  auth: any,
+  principal: any,
+  request: Request,
+) {
+  const prefix = formData.get("prefix") as string;
+
+  if (!prefix) {
+    return { success: false, error: "Missing prefix" };
+  }
+
+  const authToken = auth.getHeadscaleApiKey(principal);
+  if (!authToken) {
+    return { success: false, error: "No API key available" };
+  }
+
+  try {
+    await headscale.client(authToken).apiKeys.delete(prefix);
+
+    await audit.log({
+      actor: principal.username ?? principal.userId,
+      action: "apikey.delete",
+      resource: "apikeys",
+      success: true,
+      metadata: { prefix },
+    });
+
+    log.info(
+      "apikeys",
+      "API key deleted by %s, prefix: %s",
+      principal.username ?? principal.userId,
+      prefix,
+    );
+
+    // Check if user deleted their own session key
+    if (authToken.startsWith(prefix.replace(/\*/g, ""))) {
+      return redirect("/logout");
+    }
+
+    return { success: true };
+  } catch (error) {
+    log.error("apikeys", "Failed to delete API key: %s", String(error));
+
+    await audit.log({
+      actor: principal.username ?? principal.userId,
+      action: "apikey.delete",
+      resource: "apikeys",
+      success: false,
+      metadata: { prefix, error: String(error) },
+    });
+
+    return { success: false, error: "Failed to delete API key" };
   }
 }
 

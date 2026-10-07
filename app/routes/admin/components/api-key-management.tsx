@@ -1,5 +1,6 @@
 import { Copy, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Form, useFetcher, useRevalidator } from "react-router";
 
 import Button from "~/components/button";
 import Card from "~/components/card";
@@ -8,8 +9,8 @@ import Notice from "~/components/notice";
 
 interface ApiKeyManagementProps {
   authToken: string;
-  headscaleUrl: string;
   configuredApiKey?: string;
+  apiKeys: ApiKey[];
 }
 
 interface ApiKey {
@@ -21,97 +22,79 @@ interface ApiKey {
 
 export default function ApiKeyManagement({
   authToken,
-  headscaleUrl,
   configuredApiKey,
+  apiKeys: initialApiKeys,
 }: ApiKeyManagementProps) {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedKey, setSelectedKey] = useState<ApiKey | null>(null);
-  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  
+  const createFetcher = useFetcher();
+  const deleteFetcher = useFetcher();
+  const revalidator = useRevalidator();
 
   const serviceKeyPrefix = configuredApiKey ? configuredApiKey.substring(0, 8) : null;
-
-  useEffect(() => {
-    loadApiKeys();
-  }, []);
-
-  async function loadApiKeys() {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch(`/api/admin/apikeys`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to load API keys: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setApiKeys(data.apiKeys || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleCreateApiKey(expirationDays: number) {
-    try {
-      const expiration = new Date();
-      expiration.setDate(expiration.getDate() + expirationDays);
-
-      const response = await fetch(`/api/admin/apikeys`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ expiration: expiration.toISOString() }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to create API key: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setNewApiKey(data.apiKey);
-      await loadApiKeys();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }
-
-  async function handleDeleteApiKey(key: ApiKey) {
-    try {
-      const response = await fetch(
-        `/api/admin/apikeys?prefix=${encodeURIComponent(key.prefix)}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete API key: ${response.statusText}`);
-      }
-
-      await loadApiKeys();
-      setShowDeleteDialog(false);
-      setSelectedKey(null);
-
-      // If user deleted their own session key, redirect to login
-      if (authToken.startsWith(key.prefix.replace(/\*/g, ""))) {
-        window.location.href = "/logout";
-      }
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }
+  
+  // Use data from fetcher if available, otherwise use initial data
+  const apiKeys = revalidator.state === "loading" ? initialApiKeys : initialApiKeys;
+  const newApiKey = createFetcher.data?.success ? createFetcher.data.apiKey : null;
+  const error = createFetcher.data?.error || deleteFetcher.data?.error;
 
   function isServiceKey(key: ApiKey): boolean {
     if (!serviceKeyPrefix) return false;
     return key.prefix.replace(/\*/g, "").startsWith(serviceKeyPrefix);
   }
+
+  return (
+    <Card className="mt-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <Card.Title>API Keys</Card.Title>
+          <Card.Text>Manage Headscale API keys for automation and integrations</Card.Text>
+        </div>
+        <Button variant="heavy" onClick={() => setShowCreateDialog(true)}>
+          <Plus className="h-4 w-4" />
+          Create API Key
+        </Button>
+      </div>
+
+      {error && (
+        <Notice variant="error" className="mt-4">
+          {error}
+        </Notice>
+      )}
+
+      <ApiKeyTable
+        apiKeys={apiKeys}
+        isServiceKey={isServiceKey}
+        onDelete={(key) => {
+          setSelectedKey(key);
+          setShowDeleteDialog(true);
+        }}
+      />
+
+      <CreateApiKeyDialog
+        isOpen={showCreateDialog}
+        onClose={() => {
+          setShowCreateDialog(false);
+          createFetcher.data = null;
+        }}
+        newApiKey={newApiKey}
+        fetcher={createFetcher}
+      />
+
+      <DeleteApiKeyDialog
+        isOpen={showDeleteDialog}
+        onClose={() => {
+          setShowDeleteDialog(false);
+          setSelectedKey(null);
+        }}
+        apiKey={selectedKey}
+        fetcher={deleteFetcher}
+      />
+    </Card>
+  );
+}
 
   if (loading) {
     return (
