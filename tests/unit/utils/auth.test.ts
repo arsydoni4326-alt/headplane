@@ -15,16 +15,20 @@ import {
 } from "~/utils/auth";
 
 // Mock auth service
-function createMockAuthService(canOverride?: (principal: Principal, cap: number) => boolean): AuthService {
+function createMockAuthService(
+  canOverride?: (principal: Principal, cap: number) => boolean,
+): AuthService {
   return {
-    can: canOverride ?? ((principal: Principal, cap: number) => {
-      // Default mock: API key and password principals always have all capabilities
-      if (principal.kind === "api_key" || principal.kind === "password") {
-        return true;
-      }
-      // OIDC/proxy principals: check their role capabilities
-      return false;
-    }),
+    can:
+      canOverride ??
+      ((principal: Principal, cap: number) => {
+        // Default mock: API key and password principals always have all capabilities
+        if (principal.kind === "api_key" || principal.kind === "password") {
+          return true;
+        }
+        // OIDC/proxy principals: check their role capabilities
+        return false;
+      }),
   } as AuthService;
 }
 
@@ -180,20 +184,28 @@ describe("getPrincipalDisplayName", () => {
 
 describe("getAuthMethodName", () => {
   test("returns correct names for each auth method", () => {
-    expect(getAuthMethodName({ kind: "api_key", sessionId: "t", displayName: "K", apiKey: "k" })).toBe("API Key");
-    expect(getAuthMethodName({ kind: "password", sessionId: "t", token: "t", username: "u" })).toBe("Password");
-    expect(getAuthMethodName({
-      kind: "oidc",
-      sessionId: "t",
-      user: { id: "1", subject: "s", role: "admin", headscaleUserId: undefined },
-      profile: { name: "N" },
-    })).toBe("OIDC");
-    expect(getAuthMethodName({
-      kind: "proxy",
-      sessionId: "t",
-      user: { id: "1", subject: "s", role: "admin", headscaleUserId: undefined },
-      profile: { name: "N" },
-    })).toBe("Proxy Auth");
+    expect(
+      getAuthMethodName({ kind: "api_key", sessionId: "t", displayName: "K", apiKey: "k" }),
+    ).toBe("API Key");
+    expect(getAuthMethodName({ kind: "password", sessionId: "t", token: "t", username: "u" })).toBe(
+      "Password",
+    );
+    expect(
+      getAuthMethodName({
+        kind: "oidc",
+        sessionId: "t",
+        user: { id: "1", subject: "s", role: "admin", headscaleUserId: undefined },
+        profile: { name: "N" },
+      }),
+    ).toBe("OIDC");
+    expect(
+      getAuthMethodName({
+        kind: "proxy",
+        sessionId: "t",
+        user: { id: "1", subject: "s", role: "admin", headscaleUserId: undefined },
+        profile: { name: "N" },
+      }),
+    ).toBe("Proxy Auth");
   });
 });
 

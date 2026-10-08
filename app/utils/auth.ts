@@ -5,13 +5,13 @@ import { Capabilities } from "~/server/web/roles";
 /**
  * Check if a principal has admin capabilities.
  * Admin capability is determined by the `configure_iam` capability.
- * 
+ *
  * This works for all authentication methods:
  * - API key authentication (always admin)
  * - Password authentication (always admin)
  * - OIDC authentication (based on user role)
  * - Proxy authentication (based on user role)
- * 
+ *
  * @param auth - The auth service instance
  * @param principal - The authenticated principal
  * @returns true if the principal has admin capabilities
@@ -22,7 +22,7 @@ export function isAdmin(auth: AuthService, principal: Principal): boolean {
 
 /**
  * Check if a principal has write access to users.
- * 
+ *
  * @param auth - The auth service instance
  * @param principal - The authenticated principal
  * @returns true if the principal can write users
@@ -33,7 +33,7 @@ export function canWriteUsers(auth: AuthService, principal: Principal): boolean 
 
 /**
  * Check if a principal has write access to machines.
- * 
+ *
  * @param auth - The auth service instance
  * @param principal - The authenticated principal
  * @returns true if the principal can write machines
@@ -44,7 +44,7 @@ export function canWriteMachines(auth: AuthService, principal: Principal): boole
 
 /**
  * Check if a principal has write access to policy.
- * 
+ *
  * @param auth - The auth service instance
  * @param principal - The authenticated principal
  * @returns true if the principal can write policy
@@ -55,7 +55,7 @@ export function canWritePolicy(auth: AuthService, principal: Principal): boolean
 
 /**
  * Get a user-friendly display name for a principal.
- * 
+ *
  * @param principal - The authenticated principal
  * @returns A display name suitable for showing in UI
  */
@@ -72,7 +72,7 @@ export function getPrincipalDisplayName(principal: Principal): string {
 
 /**
  * Get the authentication method name for display.
- * 
+ *
  * @param principal - The authenticated principal
  * @returns A human-readable authentication method name
  */
@@ -93,7 +93,7 @@ export function getAuthMethodName(principal: Principal): string {
 
 /**
  * Create an error message for unauthorized access.
- * 
+ *
  * @param principal - The authenticated principal (optional)
  * @returns An error message explaining the authorization failure
  */
@@ -111,7 +111,7 @@ export function getUnauthorizedMessage(principal?: Principal): string {
 /**
  * Create a standardized 403 Response for unauthorized access.
  * Useful for throwing from loaders/actions.
- * 
+ *
  * @param principal - The authenticated principal (optional)
  * @param customMessage - Optional custom message to override the default
  * @returns A Response object with 403 status
@@ -121,7 +121,7 @@ export function createUnauthorizedResponse(
   customMessage?: string,
 ): Response {
   const message = customMessage ?? getUnauthorizedMessage(principal);
-  
+
   return new Response(message, {
     status: 403,
     statusText: "Forbidden",
