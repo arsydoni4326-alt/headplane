@@ -248,7 +248,6 @@ export default function Header({ user, access, configAvailable }: HeaderProps) {
 
 export function UserAvatar({ name, picture }: Pick<HeaderProps["user"], "name" | "picture">) {
   const [imageFailed, setImageFailed] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   if (!picture || imageFailed) {
     return <CircleUser aria-hidden="true" className="size-8" />;
@@ -256,15 +255,11 @@ export function UserAvatar({ name, picture }: Pick<HeaderProps["user"], "name" |
 
   return (
     <span className="relative block size-8">
-      {!imageLoaded && <CircleUser aria-hidden="true" className="absolute inset-0 size-8" />}
+      <CircleUser aria-hidden="true" className="absolute inset-0 size-8" />
       <img
         alt={`${name}'s avatar`}
-        className={cn(
-          "absolute inset-0 z-10 size-8 rounded-full object-cover",
-          !imageLoaded && "opacity-0",
-        )}
+        className="absolute inset-0 z-10 size-8 rounded-full object-cover"
         onError={() => setImageFailed(true)}
-        onLoad={() => setImageLoaded(true)}
         src={picture}
       />
     </span>
