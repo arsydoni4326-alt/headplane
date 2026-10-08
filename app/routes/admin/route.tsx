@@ -4,16 +4,25 @@ import { Form, redirect, Link } from "react-router";
 import Button from "~/components/button";
 import Card from "~/components/card";
 import Notice from "~/components/notice";
-import { appConfigContext, authContext, localAdminContext } from "~/server/context";
+import { actorFromPrincipal } from "~/server/audit";
+import {
+  authContext,
+  localAdminContext,
+  headscaleContext,
+  auditContext,
+  headscaleApiKeyContext,
+} from "~/server/context";
 import { isAdmin, createUnauthorizedResponse } from "~/utils/auth";
+import log from "~/utils/log";
 
 import type { Route } from "./+types/route";
 import ApiKeyManagement from "./components/api-key-management";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const auth = context.get(authContext);
-  const config = context.get(appConfigContext);
   const localAdmin = context.get(localAdminContext);
+  const headscale = context.get(headscaleContext);
+  const configuredApiKey = context.get(headscaleApiKeyContext);
   const principal = await auth.require(request);
 
   if (!isAdmin(auth, principal)) {
@@ -32,17 +41,29 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   const authToken = auth.getHeadscaleApiKey(principal);
 
+  // Fetch API keys server-side
+  let apiKeys: any[] = [];
+  if (authToken) {
+    try {
+      apiKeys = await headscale.client(authToken).apiKeys.list();
+    } catch (error) {
+      log.error("api", "Failed to load API keys: %s", String(error));
+    }
+  }
+
   return {
     username: localAdmin.value.getUsername(),
-    authToken,
-    headscaleUrl: config.headscale.url,
-    configuredApiKey: config.headscale.api_key,
+    configuredApiKeyPrefix: configuredApiKey?.slice(0, 8),
+    apiKeys,
   };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
   const auth = context.get(authContext);
   const localAdmin = context.get(localAdminContext);
+  const headscale = context.get(headscaleContext);
+  const audit = context.get(auditContext);
+  const configuredApiKey = context.get(headscaleApiKeyContext);
   const principal = await auth.require(request);
 
   if (!isAdmin(auth, principal)) {
@@ -58,6 +79,14 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (actionType === "reset-password") {
     return await handlePasswordReset(formData, localAdmin, auth);
+  }
+
+  if (actionType === "create-apikey") {
+    return await handleCreateApiKey(formData, headscale, audit, auth, principal, request);
+  }
+
+  if (actionType === "delete-apikey") {
+    return await handleDeleteApiKey(formData, headscale, audit, auth, principal, configuredApiKey);
   }
 
   return { success: false, error: "Unknown action" };
@@ -148,6 +177,120 @@ async function handlePasswordReset(formData: FormData, localAdmin: any, auth: an
   }
 }
 
+async function handleCreateApiKey(
+  formData: FormData,
+  headscale: any,
+  audit: any,
+  auth: any,
+  principal: any,
+  _request: Request,
+) {
+  const expirationDays = Number(formData.get("expiration_days"));
+
+  if (!expirationDays || expirationDays < 1) {
+    return { success: false, error: "Invalid expiration days" };
+  }
+
+  const authToken = auth.getHeadscaleApiKey(principal);
+  if (!authToken) {
+    return { success: false, error: "No API key available" };
+  }
+
+  try {
+    const expiration = new Date();
+    expiration.setDate(expiration.getDate() + expirationDays);
+
+    const result = await headscale.client(authToken).apiKeys.create(expiration);
+    const actor = actorFromPrincipal(principal);
+
+    await audit.record({
+      ...actor,
+      action: "apikey.create",
+      resourceType: "apikey",
+      details: { expiration: expiration.toISOString() },
+    });
+
+    log.info(
+      "api",
+      "API key created by %s, expires: %s",
+      actor.actorName,
+      expiration.toISOString(),
+    );
+
+    return { success: true, apiKey: result.apiKey };
+  } catch (error) {
+    log.error("api", "Failed to create API key: %s", String(error));
+    const actor = actorFromPrincipal(principal);
+
+    await audit.record({
+      ...actor,
+      action: "apikey.create",
+      resourceType: "apikey",
+      details: { error: String(error), success: false },
+    });
+
+    return { success: false, error: "Failed to create API key" };
+  }
+}
+
+async function handleDeleteApiKey(
+  formData: FormData,
+  headscale: any,
+  audit: any,
+  auth: any,
+  principal: any,
+  configuredApiKey: string | undefined,
+) {
+  const prefix = formData.get("prefix") as string;
+
+  if (!prefix) {
+    return { success: false, error: "Missing prefix" };
+  }
+
+  if (configuredApiKey?.startsWith(prefix.replaceAll("*", ""))) {
+    return { success: false, error: "Cannot delete configured service key" };
+  }
+
+  const authToken = auth.getHeadscaleApiKey(principal);
+  if (!authToken) {
+    return { success: false, error: "No API key available" };
+  }
+
+  try {
+    await headscale.client(authToken).apiKeys.delete(prefix);
+    const actor = actorFromPrincipal(principal);
+
+    await audit.record({
+      ...actor,
+      action: "apikey.delete",
+      resourceType: "apikey",
+      resourceId: prefix,
+    });
+
+    log.info("api", "API key deleted by %s, prefix: %s", actor.actorName, prefix);
+
+    // Check if user deleted their own session key
+    if (authToken.startsWith(prefix.replace(/\*/g, ""))) {
+      return redirect("/logout");
+    }
+
+    return { success: true };
+  } catch (error) {
+    log.error("api", "Failed to delete API key: %s", String(error));
+    const actor = actorFromPrincipal(principal);
+
+    await audit.record({
+      ...actor,
+      action: "apikey.delete",
+      resourceType: "apikey",
+      resourceId: prefix,
+      details: { error: String(error), success: false },
+    });
+
+    return { success: false, error: "Failed to delete API key" };
+  }
+}
+
 export default function AdminRoute({ loaderData, actionData }: Route.ComponentProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -172,7 +315,7 @@ export default function AdminRoute({ loaderData, actionData }: Route.ComponentPr
         this mode.
       </Notice>
 
-      <Card className="mt-6 max-w-2xl">
+      <Card className="mt-6 w-full max-w-none">
         <Card.Title>Reset Password</Card.Title>
         <Card.Text>
           Change your administrator password. You will be logged out after resetting your password.
@@ -240,9 +383,8 @@ export default function AdminRoute({ loaderData, actionData }: Route.ComponentPr
       </Card>
 
       <ApiKeyManagement
-        authToken={loaderData.authToken}
-        headscaleUrl={loaderData.headscaleUrl}
-        configuredApiKey={loaderData.configuredApiKey}
+        configuredApiKeyPrefix={loaderData.configuredApiKeyPrefix}
+        apiKeys={loaderData.apiKeys}
       />
     </>
   );

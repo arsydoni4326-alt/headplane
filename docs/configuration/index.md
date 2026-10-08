@@ -12,6 +12,47 @@ Headplane also stores stuff in the `/var/lib/headplane` directory by default.
 This can be configured on a per-section basis in the configuration file, but
 it is very important this directory is persistent and writable by Headplane.
 
+## Local administrator profile
+
+Configuring `user` enables one local Headplane administrator and disables OIDC
+and proxy authentication. `user.password` must be a bcrypt cost-12 hash; use
+`headplane hash-password --password-stdin` to create one. `name` and `avatar`
+are optional profile fields, and avatars must use an HTTPS URL.
+
+## Local administrator avatar
+
+When using the optional local `user` authentication block, you may set
+`user.avatar` to an HTTPS image URL or a path served by Headplane or its reverse
+proxy:
+
+```yaml
+user:
+  username: admin
+  password: "$2b$12$..."
+  name: "Local Administrator"
+  avatar: "https://example.com/avatar.png"
+```
+
+The administrator can update these fields at `/admin/admin/users`. Headplane
+creates a private timestamped backup beside `config.yaml`, writes a temporary
+file, syncs it, and atomically renames it into place. The process must have
+write access to the configuration directory. A changed username or password
+ends all password-authenticated sessions, including the current session.
+
+`user.password_path` remains available for managed secrets. Saving a new
+password from the profile page replaces `password_path` with the new bcrypt
+hash in `user.password`; use the password reset CLI and an updated secret file
+instead when the password must remain externally managed.
+avatar: "https://example.com/avatar.png"
+
+````
+
+The field is optional and does not change local authentication. Headplane shows
+the avatar in the user menu when the browser loads it successfully; otherwise,
+including when it is unset, missing, blocked by CORS, or invalid, it displays
+the standard user icon instead. Use a same-origin path or an image host that
+allows the browser to fetch the image from your Headplane origin.
+
 ## Environment Variables
 
 It is also possible to override the configuration file using environment variables.
@@ -154,4 +195,4 @@ http:
           - "https://headscale.tale.me"
         accessControlMaxAge: 100
         addVaryHeader: true
-```
+````

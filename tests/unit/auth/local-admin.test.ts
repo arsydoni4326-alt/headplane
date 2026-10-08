@@ -89,5 +89,24 @@ describe("local-admin", () => {
 
       expect(service.getUsername()).toBe("test-admin");
     });
+
+    it("uses updated credentials without recreating the service", async () => {
+      const oldHash = await hashPassword("old-password");
+      const newHash = await hashPassword("new-password");
+      const service = createLocalAdminService({
+        username: "admin",
+        passwordHash: oldHash,
+      });
+
+      service.updateCredentials({ username: "operator", passwordHash: newHash });
+
+      expect(service.getUsername()).toBe("operator");
+      await expect(service.authenticate("admin", "old-password")).resolves.toMatchObject({
+        success: false,
+      });
+      await expect(service.authenticate("operator", "new-password")).resolves.toEqual({
+        success: true,
+      });
+    });
   });
 });

@@ -17,6 +17,7 @@ import {
   Sun,
   Users,
 } from "lucide-react";
+import { useState } from "react";
 import { NavLink, unstable_useRoute as useRoute, useLocation, useSubmit } from "react-router";
 
 import Link from "~/components/link";
@@ -59,7 +60,7 @@ const tabs = [
   { to: "/derp", icon: Radio, label: "DERP", key: "audit" },
   { to: "/instances", icon: Server, label: "Instances", key: "settings" },
   { to: "/audit", icon: History, label: "Audit", key: "audit" },
-  { to: "/admin/users", icon: ShieldAlert, label: "Admin", key: "admin" },
+  { to: "/admin", icon: ShieldAlert, label: "Admin", key: "admin" },
   { to: "/settings", icon: Settings, label: "Settings", key: "settings" },
 ] as const;
 
@@ -156,12 +157,11 @@ export default function Header({ user, access, configAvailable }: HeaderProps) {
             </MenuContent>
           </Menu>
           <Menu>
-            <MenuTrigger className="size-8 overflow-hidden rounded-full">
-              {user.picture ? (
-                <img alt={user.name} className="size-8" src={user.picture} />
-              ) : (
-                <CircleUser className="size-8" />
-              )}
+            <MenuTrigger
+              aria-label={`${user.name} menu`}
+              className="size-8 overflow-hidden rounded-full"
+            >
+              <UserAvatar name={user.name} picture={user.picture} />
             </MenuTrigger>
             <MenuContent align="end">
               <MenuItem disabled>
@@ -243,6 +243,31 @@ export default function Header({ user, access, configAvailable }: HeaderProps) {
         </div>
       )}
     </header>
+  );
+}
+
+export function UserAvatar({ name, picture }: Pick<HeaderProps["user"], "name" | "picture">) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  if (!picture || imageFailed) {
+    return <CircleUser aria-hidden="true" className="size-8" />;
+  }
+
+  return (
+    <span className="relative block size-8">
+      <CircleUser aria-hidden="true" className="size-8" />
+      <img
+        alt={`${name}'s avatar`}
+        className={cn(
+          "absolute inset-0 size-8 rounded-full object-cover",
+          !imageLoaded && "opacity-0",
+        )}
+        onError={() => setImageFailed(true)}
+        onLoad={() => setImageLoaded(true)}
+        src={picture}
+      />
+    </span>
   );
 }
 

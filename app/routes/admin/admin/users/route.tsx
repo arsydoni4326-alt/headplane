@@ -1,25 +1,21 @@
 import { Eye, EyeOff, Save, User } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Form, useActionData } from "react-router";
+import { data, Form, useActionData } from "react-router";
 
 import Button from "~/components/button";
 import Card from "~/components/card";
 import Dialog, { DialogPanel } from "~/components/dialog";
 import Input from "~/components/input";
-import Notice from "~/components/notice";
 import PageError from "~/components/page-error";
+import type { LocalAdminService } from "~/server/auth/local-admin";
+import type { HeadplaneConfig } from "~/server/config/config-schema";
+import { updateConfig } from "~/server/config/write";
 import { appConfigContext, authContext, localAdminContext } from "~/server/context";
+import type { AuthService } from "~/server/web/auth";
 import { isAdmin, createUnauthorizedResponse } from "~/utils/auth";
 import log from "~/utils/log";
 
 import type { Route } from "./+types/route";
-
-interface ProfileSettings {
-  username: string;
-  name?: string;
-  avatar?: string;
-  theme?: string;
-}
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const auth = context.get(authContext);
@@ -27,7 +23,6 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const localAdmin = context.get(localAdminContext);
   const principal = await auth.require(request);
 
-  // Admin-only access
   if (!isAdmin(auth, principal)) {
     throw createUnauthorizedResponse(
       principal,
@@ -35,59 +30,19 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     );
   }
 
-  // Only allow access in single-admin mode
   if (localAdmin.state !== "enabled") {
     throw new Response("Administration is only available in single local administrator mode", {
       status: 403,
     });
   }
 
-  // Fetch current profile settings from backend
-  try {
-    const baseUrl = config.headscale.url;
-    const token = auth.getHeadscaleApiKey(principal);
-
-    const response = await fetch(`${baseUrl}/api/v1/headplane/settings`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      log.error("profile", "Failed to fetch profile settings: %s", response.statusText);
-      return {
-        profile: {
-          username: localAdmin.value.getUsername(),
-          name: "",
-          avatar: "",
-          theme: "light",
-        },
-        loadError: "Failed to load profile settings",
-      };
-    }
-
-    const settings = (await response.json()) as ProfileSettings;
-    return {
-      profile: {
-        username: settings.username || localAdmin.value.getUsername(),
-        name: settings.name || "",
-        avatar: settings.avatar || "",
-        theme: settings.theme || "light",
-      },
-      loadError: null,
-    };
-  } catch (error) {
-    log.error("profile", "Error fetching profile settings: %s", String(error));
-    return {
-      profile: {
-        username: localAdmin.value.getUsername(),
-        name: "",
-        avatar: "",
-        theme: "light",
-      },
-      loadError: "Failed to connect to server",
-    };
-  }
+  return {
+    profile: {
+      username: config.user?.username || localAdmin.value.getUsername(),
+      name: config.user?.name || "",
+      avatar: config.user?.avatar || "",
+    },
+  };
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -107,26 +62,28 @@ export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
   const actionType = formData.get("_action") as string;
 
-  const baseUrl = config.headscale.url;
-  const token = auth.getHeadscaleApiKey(principal);
-
   if (actionType === "update-profile") {
-    return await handleProfileUpdate(formData, baseUrl, token);
+    return handleProfileUpdate(formData, request, config, localAdmin.value, auth);
   }
 
   if (actionType === "change-password") {
-    return await handlePasswordChange(formData, localAdmin);
+    return handlePasswordChange(formData, request, config, localAdmin.value, auth);
   }
 
   return { success: false, error: "Unknown action", actionType: null };
 }
 
-async function handleProfileUpdate(formData: FormData, baseUrl: string, token: string) {
+async function handleProfileUpdate(
+  formData: FormData,
+  request: Request,
+  config: HeadplaneConfig,
+  localAdmin: LocalAdminService,
+  auth: AuthService,
+) {
   const username = formData.get("username")?.toString()?.trim();
   const name = formData.get("name")?.toString()?.trim();
   const avatar = formData.get("avatar")?.toString()?.trim();
 
-  // Validation
   if (!username) {
     return {
       success: false,
@@ -135,60 +92,81 @@ async function handleProfileUpdate(formData: FormData, baseUrl: string, token: s
     };
   }
 
-  // Avatar must be HTTPS or empty
-  if (avatar && !avatar.startsWith("https://")) {
-    return {
-      success: false,
-      error: "Avatar URL must use HTTPS",
-      actionType: "update-profile",
-    };
-  }
-
-  try {
-    const body: Record<string, string> = { username };
-    if (name) body.name = name;
-    if (avatar) body.avatar = avatar;
-
-    const response = await fetch(`${baseUrl}/api/v1/headplane/settings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      log.error("profile", "Failed to update profile: %s", errorText);
+  if (avatar) {
+    try {
+      if (new URL(avatar).protocol !== "https:") {
+        return {
+          success: false,
+          error: "Avatar URL must use HTTPS",
+          actionType: "update-profile",
+        };
+      }
+    } catch {
       return {
         success: false,
-        error: "Failed to update profile",
+        error: "Avatar URL must be a valid HTTPS URL",
         actionType: "update-profile",
       };
     }
+  }
 
-    return {
-      success: true,
-      message: "Profile updated successfully",
-      actionType: "update-profile",
-    };
+  try {
+    const usernameChanged = username !== localAdmin.getUsername();
+    await updateConfig(
+      configPath(),
+      { user: { username, name: name || undefined, avatar: avatar || undefined } },
+      { backup: true },
+    );
+    localAdmin.updateCredentials({ username });
+    if (config.user) {
+      config.user.username = username;
+      if (name) {
+        config.user.name = name;
+      } else {
+        delete config.user.name;
+      }
+      if (avatar) {
+        config.user.avatar = avatar;
+      } else {
+        delete config.user.avatar;
+      }
+    }
+
+    if (usernameChanged) {
+      await auth.invalidatePasswordSessions();
+      return data(
+        {
+          success: true,
+          message: "Profile updated successfully. Please log in again.",
+          actionType: "update-profile",
+          requiresLogout: true,
+        },
+        { headers: { "Set-Cookie": await auth.destroySession(request) } },
+      );
+    }
+
+    return { success: true, message: "Profile updated successfully", actionType: "update-profile" };
   } catch (error) {
-    log.error("profile", "Error updating profile: %s", String(error));
+    log.error("config", "Error updating profile: %s", String(error));
     return {
       success: false,
-      error: "Failed to connect to server",
+      error: configUpdateError(error),
       actionType: "update-profile",
     };
   }
 }
 
-async function handlePasswordChange(formData: FormData, localAdmin: any) {
+async function handlePasswordChange(
+  formData: FormData,
+  request: Request,
+  config: HeadplaneConfig,
+  localAdmin: LocalAdminService,
+  auth: AuthService,
+) {
   const currentPassword = formData.get("current_password")?.toString();
   const newPassword = formData.get("new_password")?.toString();
   const confirmPassword = formData.get("confirm_password")?.toString();
 
-  // Validation
   if (!currentPassword || !newPassword || !confirmPassword) {
     return {
       success: false,
@@ -213,11 +191,7 @@ async function handlePasswordChange(formData: FormData, localAdmin: any) {
     };
   }
 
-  // Verify current password
-  const result = await localAdmin.value.authenticate(
-    localAdmin.value.getUsername(),
-    currentPassword,
-  );
+  const result = await localAdmin.authenticate(localAdmin.getUsername(), currentPassword);
 
   if (!result.success) {
     return {
@@ -227,92 +201,84 @@ async function handlePasswordChange(formData: FormData, localAdmin: any) {
     };
   }
 
-  // Hash new password and update config
   try {
     const { hashPassword } = await import("~/server/auth/bcrypt-utils");
     const newHash = await hashPassword(newPassword);
+    await updateConfig(configPath(), { user: { password: newHash } }, { backup: true });
+    localAdmin.updateCredentials({ passwordHash: newHash });
+    if (config.user) {
+      config.user.password = newHash;
+    }
+    await auth.invalidatePasswordSessions();
 
-    const { dump, load } = await import("js-yaml");
-    const { readFile, writeFile, rename, open } = await import("node:fs/promises");
-
-    const configPath = localAdmin.value.configPath;
-    const configYaml = await readFile(configPath, "utf-8");
-    const config = load(configYaml) as any;
-
-    // Update password hash
-    config.headplane = config.headplane || {};
-    config.headplane.password = newHash;
-
-    // Atomic write
-    const tempPath = `${configPath}.tmp`;
-    await writeFile(tempPath, dump(config), "utf-8");
-
-    const fd = await open(tempPath, "r+");
-    await fd.sync();
-    await fd.close();
-
-    await rename(tempPath, configPath);
-
-    return {
-      success: true,
-      message: "Password changed successfully. Please log in again.",
-      actionType: "change-password",
-      requiresLogout: true,
-    };
+    return data(
+      {
+        success: true,
+        message: "Password changed successfully. Please log in again.",
+        actionType: "change-password",
+        requiresLogout: true,
+      },
+      { headers: { "Set-Cookie": await auth.destroySession(request) } },
+    );
   } catch (error) {
-    log.error("profile", "Error changing password: %s", String(error));
+    log.error("config", "Error changing password: %s", String(error));
     return {
       success: false,
-      error: "Failed to update password",
+      error: configUpdateError(error),
       actionType: "change-password",
     };
   }
 }
 
+function configPath(): string {
+  return process.env.HEADPLANE_CONFIG_PATH ?? "/etc/headplane/config.yaml";
+}
+
+function configUpdateError(error: unknown): string {
+  const message = String(error);
+  if (message.includes("EACCES") || message.includes("EPERM") || message.includes("EROFS")) {
+    return "Config file is read-only. Use CLI tool: headplane reset-local-admin-password";
+  }
+
+  return "Failed to update configuration. See server logs for details.";
+}
+
 export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentProps) {
   const actionData = useActionData<typeof action>();
 
-  // Form state
   const [username, setUsername] = useState(loaderData.profile.username);
   const [name, setName] = useState(loaderData.profile.name);
   const [avatar, setAvatar] = useState(loaderData.profile.avatar);
 
-  // Password state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Password visibility state
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
 
-  // Handle action responses
   useEffect(() => {
     if (actionData) {
       if (actionData.success) {
-        setModalMessage(actionData.message || "Operation successful");
+        setModalMessage("message" in actionData ? actionData.message : "Operation successful");
         setShowSuccessModal(true);
 
-        // Clear password fields after successful password change
         if (actionData.actionType === "change-password") {
           setCurrentPassword("");
           setNewPassword("");
           setConfirmPassword("");
-
-          // Redirect to login if logout required
-          if (actionData.requiresLogout) {
-            setTimeout(() => {
-              window.location.href = "/auth/login/logout";
-            }, 2000);
-          }
         }
-      } else if (actionData.error) {
+        if ("requiresLogout" in actionData && actionData.requiresLogout) {
+          setTimeout(() => {
+            window.location.href = `${__PREFIX__}/login?s=logout`;
+          }, 2000);
+        }
+      } else if ("error" in actionData && actionData.error) {
         setModalMessage(actionData.error);
         setShowErrorModal(true);
       }
@@ -330,13 +296,6 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
         </div>
       </div>
 
-      {loaderData.loadError && (
-        <Notice variant="error" className="mb-6">
-          {loaderData.loadError}
-        </Notice>
-      )}
-
-      {/* Profile Information Card */}
       <Card className="mb-6 max-w-2xl">
         <Card.Title>Profile Information</Card.Title>
         <Card.Text>Update your username, display name, and avatar.</Card.Text>
@@ -351,6 +310,7 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
             value={username}
             onChange={setUsername}
             required
+            placeholder="Enter username"
             description="Your login username"
           />
 
@@ -360,6 +320,7 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
             type="text"
             value={name}
             onChange={setName}
+            placeholder="No name set"
             description="Optional display name"
           />
 
@@ -369,6 +330,7 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
             type="url"
             value={avatar}
             onChange={setAvatar}
+            placeholder="https://example.com/avatar.png"
             description="HTTPS URL to your avatar image"
           />
 
@@ -379,7 +341,6 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
         </Form>
       </Card>
 
-      {/* Password Change Card */}
       <Card className="max-w-2xl">
         <Card.Title>Change Password</Card.Title>
         <Card.Text>
@@ -472,7 +433,6 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
         </Form>
       </Card>
 
-      {/* Success Modal */}
       <Dialog isOpen={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogPanel variant="unactionable">
           <div className="flex items-start gap-3">
@@ -487,7 +447,6 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
         </DialogPanel>
       </Dialog>
 
-      {/* Error Modal */}
       <Dialog isOpen={showErrorModal} onOpenChange={setShowErrorModal}>
         <DialogPanel variant="unactionable">
           <div className="flex items-start gap-3">

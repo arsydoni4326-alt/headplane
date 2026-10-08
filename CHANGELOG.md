@@ -2,6 +2,19 @@
 
 ## Fixes
 
+- Fixed the Administration API-key page so its secured server-side key operations
+  compile and can be used again.
+- Fixed Docker builds failing when the removed legacy `/admin/users` route was
+  still registered without a route module.
+- Restored the local administrator profile at `/admin/admin/users`, including
+  atomic backed-up configuration updates and password-session invalidation after
+  username or password changes.
+- Local password-authenticated administrators can now configure an optional
+  `user.avatar` image for the user menu. The standard user icon remains in use
+  when it is unset or cannot be loaded.
+- Fixed administration cards being constrained to narrow widths. Password and
+  API-key cards now use the full available content width while retaining their
+  responsive layout and internal padding.
 - Fixed password-authenticated route approvals and disables returning an error after Headscale accepted the change because audit logging did not support password sessions.
 - Fixed the admin users Create and Edit dialogs crashing when opened. The role
   selector now uses the shared Select component correctly and only offers the
