@@ -1,7 +1,8 @@
-import { ChevronDown, ChevronUp, Info, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, QrCode, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
+import Button from "~/components/button";
 import Code from "~/components/code";
 import EmptyState from "~/components/empty-state";
 import Input from "~/components/input";
@@ -314,12 +315,23 @@ export default function Page({ loaderData }: Route.ComponentProps) {
               </Link>
             </p>
           </div>
-          <NewMachine
-            disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
-            isDisabled={!loaderData.writable}
-            server={loaderData.publicServer ?? loaderData.server}
-            users={loaderData.users}
-          />
+          <div className="flex gap-3">
+            <Button
+              component={Link}
+              to="/machines/scan-qr"
+              variant="light"
+              disabled={!loaderData.writable}
+            >
+              <QrCode className="h-4 w-4" />
+              Scan QR
+            </Button>
+            <NewMachine
+              disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
+              isDisabled={!loaderData.writable}
+              server={loaderData.publicServer ?? loaderData.server}
+              users={loaderData.users}
+            />
+          </div>
         </div>
         <EmptyState
           title="No machines yet"
@@ -346,12 +358,23 @@ export default function Page({ loaderData }: Route.ComponentProps) {
             </Link>
           </p>
         </div>
-        <NewMachine
-          disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
-          isDisabled={!loaderData.writable}
-          server={loaderData.publicServer ?? loaderData.server}
-          users={loaderData.users}
-        />
+        <div className="flex gap-3">
+          <Button
+            component={Link}
+            to="/machines/scan-qr"
+            variant="light"
+            disabled={!loaderData.writable}
+          >
+            <QrCode className="h-4 w-4" />
+            Scan QR
+          </Button>
+          <NewMachine
+            disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
+            isDisabled={!loaderData.writable}
+            server={loaderData.publicServer ?? loaderData.server}
+            users={loaderData.users}
+          />
+        </div>
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative w-64">

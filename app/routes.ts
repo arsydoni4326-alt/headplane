@@ -26,6 +26,7 @@ export default [
     index("routes/home.tsx"),
     ...prefix("/machines", [
       index("routes/machines/overview.tsx"),
+      route("/scan-qr", "routes/machines/scan-qr.tsx"),
       route("/:id", "routes/machines/machine.tsx"),
     ]),
 
