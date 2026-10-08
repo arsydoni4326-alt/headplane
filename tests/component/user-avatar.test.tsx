@@ -12,7 +12,7 @@ describe("UserAvatar", () => {
     expect(avatar).toHaveClass("size-8", "rounded-full", "object-cover");
   });
 
-  test("keeps the SVG fallback visible while an avatar loads", () => {
+  test("replaces the SVG fallback with the loaded avatar", () => {
     const { container } = render(
       <UserAvatar name="Administrator" picture="https://example.com/avatar.png" />,
     );
@@ -24,6 +24,8 @@ describe("UserAvatar", () => {
     fireEvent.load(avatar);
 
     expect(avatar).not.toHaveClass("opacity-0");
+    expect(avatar).toHaveClass("z-10");
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
 
   test("renders the SVG fallback when no avatar is configured", () => {

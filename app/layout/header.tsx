@@ -256,11 +256,11 @@ export function UserAvatar({ name, picture }: Pick<HeaderProps["user"], "name" |
 
   return (
     <span className="relative block size-8">
-      <CircleUser aria-hidden="true" className="size-8" />
+      {!imageLoaded && <CircleUser aria-hidden="true" className="absolute inset-0 size-8" />}
       <img
         alt={`${name}'s avatar`}
         className={cn(
-          "absolute inset-0 size-8 rounded-full object-cover",
+          "absolute inset-0 z-10 size-8 rounded-full object-cover",
           !imageLoaded && "opacity-0",
         )}
         onError={() => setImageFailed(true)}

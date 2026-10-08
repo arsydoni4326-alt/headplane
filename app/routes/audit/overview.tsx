@@ -1,10 +1,14 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import { useSearchParams } from "react-router";
 
+import Button from "~/components/button";
+import Dialog, { DialogPanel } from "~/components/dialog";
 import EmptyState from "~/components/empty-state";
 import Input from "~/components/input";
 import PageError from "~/components/page-error";
 import Select from "~/components/select";
+import type { AuditEntry } from "~/server/audit";
 import { auditContext, authContext } from "~/server/context";
 import { Capabilities } from "~/server/web/roles";
 import cn from "~/utils/cn";
@@ -63,8 +67,17 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 }
 
 export default function Page({ loaderData }: Route.ComponentProps) {
+  return <AuditLogContent loaderData={loaderData} />;
+}
+
+export function AuditLogContent({
+  loaderData,
+}: {
+  loaderData: Awaited<ReturnType<typeof loader>>;
+}) {
   const [, setSearchParams] = useSearchParams();
   const { records, total, page, action, actorName } = loaderData;
+  const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -133,7 +146,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
               <th className="pb-2 text-xs font-bold uppercase">Actor</th>
               <th className="pb-2 text-xs font-bold uppercase">Action</th>
               <th className="pb-2 text-xs font-bold uppercase">Resource</th>
-              <th className="pb-2 text-xs font-bold uppercase">Details</th>
+              <th className="pb-2 text-xs font-bold uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-mist-100 border-t border-mist-100 align-top dark:divide-mist-800 dark:border-mist-800">
@@ -177,13 +190,9 @@ export default function Page({ loaderData }: Route.ComponentProps) {
                     ) : null}
                   </td>
                   <td className="py-2">
-                    {entry.details ? (
-                      <pre className="max-w-96 overflow-x-auto rounded-md bg-mist-100 p-2 font-mono text-xs whitespace-pre-wrap dark:bg-mist-800">
-                        {JSON.stringify(entry.details, null, 2)}
-                      </pre>
-                    ) : (
-                      <span className="text-sm opacity-50">—</span>
-                    )}
+                    <Button onClick={() => setSelectedEntry(entry)} type="button">
+                      View details
+                    </Button>
                   </td>
                 </tr>
               ))
@@ -227,7 +236,53 @@ export default function Page({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
       ) : null}
+
+      {selectedEntry ? (
+        <AuditDetailsDialog entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      ) : null}
     </>
+  );
+}
+
+function AuditDetailsDialog({ entry, onClose }: { entry: AuditEntry; onClose: () => void }) {
+  return (
+    <Dialog
+      isOpen
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
+      <DialogPanel variant="unactionable">
+        <div className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Audit entry details</h2>
+            <p className="mt-1 text-sm text-mist-600 dark:text-mist-300">
+              {ACTION_LABELS[entry.action] ?? entry.action}
+            </p>
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+            <dt className="font-medium">Actor</dt>
+            <dd>{entry.actorName}</dd>
+            <dt className="font-medium">Resource</dt>
+            <dd className="font-mono text-xs">
+              {entry.resourceType}
+              {entry.resourceId ? `: ${entry.resourceId}` : ""}
+            </dd>
+            <dt className="font-medium">Time</dt>
+            <dd>{entry.createdAt.toLocaleString()}</dd>
+          </dl>
+          {entry.details ? (
+            <pre className="max-h-96 overflow-auto rounded-md bg-mist-100 p-3 font-mono text-xs whitespace-pre-wrap dark:bg-mist-800">
+              {JSON.stringify(entry.details, null, 2)}
+            </pre>
+          ) : (
+            <p className="text-sm text-mist-600 dark:text-mist-300">
+              No additional details were recorded for this action.
+            </p>
+          )}
+        </div>
+      </DialogPanel>
+    </Dialog>
   );
 }
 
