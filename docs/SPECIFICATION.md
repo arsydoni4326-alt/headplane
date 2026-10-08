@@ -49,6 +49,11 @@ functionality of the official Tailscale admin console.
 - **FR-2.6**: A route overview page aggregates all subnet routes and exit
   nodes across every machine, showing approved/pending status and allowing
   routes to be approved or disabled from the overview.
+- **FR-2.7**: Users with machine-write permission can open
+  `/machines/scan-qr`, select an owner, and scan a pending Headscale
+  registration QR code. The QR payload must have the supported type and
+  version, a valid server URL, an auth ID, and an unexpired timestamp before
+  Headplane submits it to Headscale.
 
 ### FR-3: Users
 

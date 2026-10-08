@@ -69,7 +69,13 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   // Parse and validate QR code payload
-  let payload: { type?: string; auth_id?: string; server_url?: string };
+  let payload: {
+    type?: string;
+    version?: string;
+    auth_id?: string;
+    server_url?: string;
+    expires_at?: string;
+  };
   try {
     payload = JSON.parse(qrData);
   } catch {
@@ -80,8 +86,30 @@ export async function action({ request, context }: Route.ActionArgs) {
     throw data("Invalid QR code type", { status: 400 });
   }
 
+  if (payload.version !== "1") {
+    throw data("Unsupported QR code version", { status: 400 });
+  }
+
   if (!payload.auth_id) {
     throw data("Missing auth_id in QR code", { status: 400 });
+  }
+
+  if (!payload.server_url) {
+    throw data("Missing server_url in QR code", { status: 400 });
+  }
+
+  if (!payload.expires_at || Number.isNaN(Date.parse(payload.expires_at))) {
+    throw data("Invalid QR code expiration", { status: 400 });
+  }
+
+  if (Date.parse(payload.expires_at) <= Date.now()) {
+    throw data("QR code has expired. Start registration again to get a new code.", { status: 400 });
+  }
+
+  try {
+    new URL(payload.server_url);
+  } catch {
+    throw data("Invalid server_url in QR code", { status: 400 });
   }
 
   const authId = normalizeRegistrationKey(payload.auth_id);
@@ -125,21 +153,50 @@ export default function ScanQRPage() {
   }));
 
   const handleScan = (data: string) => {
-    setScannedData(data);
     setShowScanner(false);
     setError(null);
 
-    // Validate the payload immediately
     try {
-      const payload = JSON.parse(data);
+      const payload: {
+        type?: string;
+        version?: string;
+        auth_id?: string;
+        server_url?: string;
+        expires_at?: string;
+      } = JSON.parse(data);
       if (payload.type !== "headscale-registration") {
         setError("Invalid QR code type. Please scan a Headscale registration QR code.");
+        return;
+      }
+      if (payload.version !== "1") {
+        setError("Unsupported QR code version.");
         return;
       }
       if (!payload.auth_id) {
         setError("Invalid QR code: missing auth_id.");
         return;
       }
+      if (!payload.server_url) {
+        setError("Invalid QR code: missing server_url.");
+        return;
+      }
+      if (!payload.expires_at || Number.isNaN(Date.parse(payload.expires_at))) {
+        setError("Invalid QR code expiration.");
+        return;
+      }
+      if (Date.parse(payload.expires_at) <= Date.now()) {
+        setError("QR code has expired. Start registration again to get a new code.");
+        return;
+      }
+
+      try {
+        new URL(payload.server_url);
+      } catch {
+        setError("Invalid server_url in QR code.");
+        return;
+      }
+
+      setScannedData(data);
     } catch {
       setError("Invalid QR code format. Please try again.");
     }
