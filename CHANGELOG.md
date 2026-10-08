@@ -2,6 +2,10 @@
 
 ## Fixes
 
+- The local administrator profile cards now use the full available page width,
+  configured avatars render correctly even when cached during hydration, and
+  audit-entry details now open from an Action-column dialog instead of expanding
+  every row.
 - Fixed the Administration API-key page so its secured server-side key operations
   compile and can be used again.
 - Fixed Docker builds failing when the removed legacy `/admin/users` route was

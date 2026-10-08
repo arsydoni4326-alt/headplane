@@ -296,7 +296,7 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
         </div>
       </div>
 
-      <Card className="mb-6 max-w-2xl">
+      <Card className="mb-6 max-w-none">
         <Card.Title>Profile Information</Card.Title>
         <Card.Text>Update your username, display name, and avatar.</Card.Text>
 
@@ -341,7 +341,7 @@ export default function AdminUsersProfileRoute({ loaderData }: Route.ComponentPr
         </Form>
       </Card>
 
-      <Card className="max-w-2xl">
+      <Card className="max-w-none">
         <Card.Title>Change Password</Card.Title>
         <Card.Text>
           Update your password. You will be logged out after changing your password.
