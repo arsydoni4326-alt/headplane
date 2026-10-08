@@ -19,6 +19,8 @@ export type AuditAction =
   | "settings.update"
   | "authkey.create"
   | "authkey.expire"
+  | "apikey.create"
+  | "apikey.delete"
   | "user.create"
   | "user.rename"
   | "user.delete"

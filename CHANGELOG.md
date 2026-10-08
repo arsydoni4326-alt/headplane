@@ -2,6 +2,8 @@
 
 ## Fixes
 
+- Fixed the Administration API-key page so its secured server-side key operations
+  compile and can be used again.
 - Fixed Docker builds failing when the removed legacy `/admin/users` route was
   still registered without a route module.
 - Restored the local administrator profile at `/admin/admin/users`, including
