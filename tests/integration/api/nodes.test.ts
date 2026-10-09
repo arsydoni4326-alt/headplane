@@ -2,26 +2,38 @@ import { RouterContextProvider } from "react-router";
 import { describe, expect, test, vi } from "vitest";
 
 import { machineAction } from "~/routes/machines/machine-actions";
+import { action as scanQRAction } from "~/routes/machines/scan-qr";
 import {
   auditContext,
   authContext,
   headscaleLiveStoreContext,
   requestApiContext,
 } from "~/server/context";
+import { nodesResource } from "~/server/headscale/live-store";
 import type { Principal } from "~/server/web/auth";
 import { Capabilities } from "~/server/web/roles";
+import { normalizeRegistrationKey } from "~/utils/register-key";
 
 import { getBootstrapClient, getNode, getRuntimeClient, HS_VERSIONS } from "../setup/env";
 
-function registerRequest(registerKey: string) {
+function qrRegisterRequest(qrData: string, user = "node-qr@") {
   const form = new FormData();
-  form.set("action_id", "register");
-  form.set("register_key", registerKey);
-  form.set("user", "node-reg@");
+  form.set("qr_data", qrData);
+  form.set("user", user);
 
-  return new Request("http://headplane.test/machines", {
+  return new Request("http://headplane.test/machines/scan-qr", {
     method: "POST",
     body: form,
+  });
+}
+
+function qrRegistrationPayload(authId: string, serverUrl: string, expiresAt: string) {
+  return JSON.stringify({
+    type: "headscale-registration",
+    version: "1",
+    auth_id: authId,
+    server_url: serverUrl,
+    expires_at: expiresAt,
   });
 }
 
@@ -55,32 +67,145 @@ function actionContext(api: Awaited<ReturnType<typeof getRuntimeClient>>) {
 describe.for(HS_VERSIONS)("Headscale %s: Users", { concurrent: false }, (version) => {
   let workingNodeId: string;
 
-  test("nodes can register from a Tailscale registration URL", async () => {
+  test("pending nodes can register through a QR payload", async () => {
     const client = await getRuntimeClient(version);
     const tailnetNode = await getNode(version);
     const { audit, auth, context, liveStore } = actionContext(client);
+    const user = await client.users.create({ name: "node-qr@" });
+    const payload = qrRegistrationPayload(
+      tailnetNode.authCode,
+      new URL(tailnetNode.registerUrl).origin,
+      new Date(Date.now() + 5 * 60_000).toISOString(),
+    );
+    const register = vi.spyOn(client.nodes, "register");
 
-    const user = await client.users.create({ name: "node-reg@" });
-    expect(user.name).toBe("node-reg@");
-
-    const response = await machineAction({
-      request: registerRequest(tailnetNode.registerUrl),
+    const response = await scanQRAction({
+      request: qrRegisterRequest(payload, user.name),
       context,
       params: {},
     } as never);
 
     expect(auth.can).toHaveBeenCalledWith(expect.anything(), Capabilities.write_machines);
+    expect(liveStore.refresh).toHaveBeenCalledWith(nodesResource, client);
     expect(liveStore.refresh).toHaveBeenCalledOnce();
-    expect(audit.record).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "machine.register", resourceType: "machine" }),
-    );
     expect(response).toBeInstanceOf(Response);
     expect((response as Response).status).toBe(302);
 
     const nodes = await client.nodes.list();
-    const node = nodes.find((n) => n.name === tailnetNode.nodeName);
-    expect(node).toBeDefined();
-    expect(node?.registerMethod).toBe("REGISTER_METHOD_CLI");
+    const matchingNodes = nodes.filter((node) => node.name === tailnetNode.nodeName);
+    expect(matchingNodes).toHaveLength(1);
+    const node = matchingNodes[0]!;
+    expect(node.user?.name).toBe(user.name);
+    expect((response as Response).headers.get("Location")).toBe(`/machines/${node.id}`);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "machine.register",
+        resourceType: "machine",
+        resourceId: node.id,
+        details: { name: node.givenName, user: user.name, method: "qr_code" },
+      }),
+    );
+    expect(register).toHaveBeenCalledOnce();
+    expect(register).toHaveBeenCalledWith(
+      user.name,
+      normalizeRegistrationKey(tailnetNode.authCode),
+    );
+
+    await expect(
+      scanQRAction({
+        request: qrRegisterRequest(payload, user.name),
+        context,
+        params: {},
+      } as never),
+    ).rejects.toMatchObject({
+      type: "DataWithResponseInit",
+      init: { status: 500 },
+    });
+
+    expect(register).toHaveBeenCalledTimes(2);
+    const nodesAfterReplay = await client.nodes.list();
+    expect(
+      nodesAfterReplay.filter((candidate) => candidate.name === tailnetNode.nodeName),
+    ).toHaveLength(1);
+    register.mockRestore();
+  });
+
+  test("invalid QR payloads do not call Headscale registration", async () => {
+    const client = await getRuntimeClient(version);
+    const register = vi.spyOn(client.nodes, "register");
+    const future = new Date(Date.now() + 5 * 60_000).toISOString();
+    const validFields = {
+      type: "headscale-registration",
+      version: "1",
+      auth_id: "hskey-authreq-valid-payload-key",
+      server_url: "https://headscale.example.test",
+      expires_at: future,
+    };
+    const cases = [
+      {
+        name: "malformed",
+        payload: "not-json",
+        error: "Invalid QR code format",
+      },
+      {
+        name: "missing type",
+        payload: JSON.stringify({ ...validFields, type: undefined }),
+        error: "Invalid QR code type",
+      },
+      {
+        name: "unsupported type",
+        payload: JSON.stringify({ ...validFields, type: "other-registration" }),
+        error: "Invalid QR code type",
+      },
+      {
+        name: "missing version",
+        payload: JSON.stringify({ ...validFields, version: undefined }),
+        error: "Unsupported QR code version",
+      },
+      {
+        name: "unsupported version",
+        payload: JSON.stringify({ ...validFields, version: "2" }),
+        error: "Unsupported QR code version",
+      },
+      {
+        name: "expired",
+        payload: JSON.stringify({ ...validFields, expires_at: new Date(0).toISOString() }),
+        error: "QR code has expired. Start registration again to get a new code.",
+      },
+      {
+        name: "missing auth ID",
+        payload: JSON.stringify({ ...validFields, auth_id: undefined }),
+        error: "Missing auth_id in QR code",
+      },
+      {
+        name: "missing server URL",
+        payload: JSON.stringify({ ...validFields, server_url: undefined }),
+        error: "Missing server_url in QR code",
+      },
+      {
+        name: "missing expiration",
+        payload: JSON.stringify({ ...validFields, expires_at: undefined }),
+        error: "Invalid QR code expiration",
+      },
+    ];
+
+    for (const invalid of cases) {
+      const { context } = actionContext(client);
+      await expect(
+        scanQRAction({
+          request: qrRegisterRequest(invalid.payload),
+          context,
+          params: {},
+        } as never),
+      ).rejects.toMatchObject({
+        type: "DataWithResponseInit",
+        data: invalid.error,
+        init: { status: 400 },
+      });
+    }
+
+    expect(register).not.toHaveBeenCalled();
+    register.mockRestore();
   });
 
   test("nodes can be retrieved", async () => {
