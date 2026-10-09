@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
+import { StrictMode } from "react";
 import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 
 import { QRScanner } from "~/components/qr-scanner";
@@ -9,6 +10,11 @@ import { QRScanner } from "~/components/qr-scanner";
 vi.mock("html5-qrcode", () => {
   return {
     Html5Qrcode: vi.fn(),
+    Html5QrcodeScannerState: {
+      NOT_STARTED: 1,
+      SCANNING: 2,
+      PAUSED: 3,
+    },
   };
 });
 
@@ -17,6 +23,7 @@ describe("QRScanner", () => {
     start: ReturnType<typeof vi.fn>;
     stop: ReturnType<typeof vi.fn>;
     clear: ReturnType<typeof vi.fn>;
+    getState: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -25,6 +32,7 @@ describe("QRScanner", () => {
       start: vi.fn(),
       stop: vi.fn().mockResolvedValue(undefined),
       clear: vi.fn(),
+      getState: vi.fn(() => Html5QrcodeScannerState.SCANNING),
     };
 
     // Mock Html5Qrcode constructor to return our mock instance
@@ -44,6 +52,7 @@ describe("QRScanner", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Scan QR Code")).toBeInTheDocument();
     expect(screen.getByText("Requesting camera permission...")).toBeInTheDocument();
+    expect(screen.getByTestId("qr-scanner-region")).not.toHaveClass("hidden");
   });
 
   test("transitions to scanning state on successful camera access", async () => {
@@ -163,6 +172,100 @@ describe("QRScanner", () => {
     await waitFor(() => {
       expect(mockScanner.stop).toHaveBeenCalled();
       expect(mockScanner.clear).toHaveBeenCalled();
+    });
+  });
+
+  test("does not stop a scanner that failed to start", async () => {
+    mockScanner.getState.mockReturnValue(Html5QrcodeScannerState.NOT_STARTED);
+    mockScanner.start.mockRejectedValue(new Error("NotAllowedError: Permission denied"));
+
+    const { unmount } = render(<QRScanner onScan={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Camera Access Denied")).toBeInTheDocument();
+    });
+
+    unmount();
+
+    expect(mockScanner.stop).not.toHaveBeenCalled();
+    expect(mockScanner.clear).not.toHaveBeenCalled();
+  });
+
+  test("absorbs a synchronous stop error during cleanup", async () => {
+    mockScanner.start.mockResolvedValue(undefined);
+    mockScanner.stop.mockImplementation(() => {
+      throw new Error("Cannot stop, scanner is not running or paused.");
+    });
+
+    const { unmount } = render(<QRScanner onScan={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Position the QR code within the frame to scan")).toBeInTheDocument();
+    });
+
+    expect(() => unmount()).not.toThrow();
+
+    await waitFor(() => {
+      expect(mockScanner.stop).toHaveBeenCalledOnce();
+    });
+
+    expect(mockScanner.clear).not.toHaveBeenCalled();
+  });
+
+  test("cleans up a paused scanner on unmount", async () => {
+    mockScanner.getState.mockReturnValue(Html5QrcodeScannerState.PAUSED);
+    mockScanner.start.mockResolvedValue(undefined);
+
+    const { unmount } = render(<QRScanner onScan={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Position the QR code within the frame to scan")).toBeInTheDocument();
+    });
+
+    unmount();
+
+    await waitFor(() => {
+      expect(mockScanner.stop).toHaveBeenCalledOnce();
+      expect(mockScanner.clear).toHaveBeenCalledOnce();
+    });
+  });
+
+  test("stops a scanner that starts after it unmounts", async () => {
+    let resolveStart: (() => void) | undefined;
+    mockScanner.getState.mockReturnValue(Html5QrcodeScannerState.SCANNING);
+    mockScanner.start.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveStart = resolve;
+        }),
+    );
+
+    const { unmount } = render(<QRScanner onScan={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(mockScanner.start).toHaveBeenCalledOnce();
+    });
+
+    unmount();
+    resolveStart?.();
+
+    await waitFor(() => {
+      expect(mockScanner.stop).toHaveBeenCalledOnce();
+      expect(mockScanner.clear).toHaveBeenCalledOnce();
+    });
+  });
+
+  test("starts successfully when React StrictMode replays the effect", async () => {
+    mockScanner.start.mockResolvedValue(undefined);
+
+    render(
+      <StrictMode>
+        <QRScanner onScan={vi.fn()} />
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Position the QR code within the frame to scan")).toBeInTheDocument();
     });
   });
 

@@ -1,6 +1,6 @@
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 import { Camera, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import Button from "~/components/button";
 import cn from "~/utils/cn";
@@ -20,52 +20,73 @@ type ScannerState =
 
 export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
   const [state, setState] = useState<ScannerState>({ status: "requesting-permission" });
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const hasStartedRef = useRef(false);
 
   useEffect(() => {
-    let mounted = true;
+    let cancelled = false;
+    let startFinished = false;
+    let scanner: Html5Qrcode | null = null;
+    let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const startScanning = async () => {
-      // Prevent double initialization
-      if (hasStartedRef.current) return;
-      hasStartedRef.current = true;
+    const stopScanner = async () => {
+      if (!scanner) {
+        return;
+      }
 
       try {
-        const scanner = new Html5Qrcode("qr-scanner-region");
-        scannerRef.current = scanner;
+        const scannerState = scanner.getState();
+        if (
+          scannerState !== Html5QrcodeScannerState.SCANNING &&
+          scannerState !== Html5QrcodeScannerState.PAUSED
+        ) {
+          return;
+        }
 
-        // Request camera permission and start scanning
+        await scanner.stop();
+        scanner.clear();
+      } catch {
+        // Camera cleanup must not escape into the route error boundary.
+      }
+    };
+
+    const startScanning = async () => {
+      try {
+        scanner = new Html5Qrcode("qr-scanner-region");
+
         await scanner.start(
-          { facingMode: "environment" }, // Use back camera on mobile
+          { facingMode: "environment" },
           {
-            fps: 10, // Scan 10 times per second
-            qrbox: { width: 250, height: 250 }, // Scanning box size
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0,
           },
           (decodedText) => {
-            if (mounted) {
+            if (!cancelled) {
               setState({ status: "success", data: decodedText });
               onScan(decodedText);
-              // Auto-close after successful scan
-              setTimeout(() => {
+              closeTimer = setTimeout(() => {
                 onClose?.();
               }, 500);
             }
           },
-          undefined, // Error callback - we don't want to show decode errors
+          undefined,
         );
 
-        if (mounted) {
-          setState({ status: "scanning" });
+        startFinished = true;
+        if (cancelled) {
+          await stopScanner();
+          return;
         }
+
+        setState({ status: "scanning" });
       } catch (err) {
-        if (!mounted) return;
+        startFinished = true;
+        if (cancelled) {
+          await stopScanner();
+          return;
+        }
 
         const error = err instanceof Error ? err : new Error(String(err));
 
-        // Check for permission-related errors
         if (
           error.message.includes("Permission") ||
           error.message.includes("permission") ||
@@ -92,20 +113,20 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
       }
     };
 
-    startScanning();
+    // Let StrictMode's effect replay cancel its first setup before creating a camera.
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void startScanning();
+      }
+    });
 
     return () => {
-      mounted = false;
-      // Cleanup scanner on unmount
-      if (scannerRef.current) {
-        scannerRef.current
-          .stop()
-          .then(() => {
-            scannerRef.current?.clear();
-          })
-          .catch(() => {
-            // Ignore cleanup errors
-          });
+      cancelled = true;
+      if (closeTimer) {
+        clearTimeout(closeTimer);
+      }
+      if (startFinished) {
+        void stopScanner();
       }
     };
   }, [onScan, onError, onClose]);
@@ -130,9 +151,7 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
           "rounded-xl bg-white dark:bg-mist-900",
           "shadow-2xl",
         )}
-        ref={containerRef}
       >
-        {/* Close button */}
         <button
           type="button"
           onClick={handleClose}
@@ -149,17 +168,17 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
           <X className="h-5 w-5" />
         </button>
 
-        {/* Scanner title */}
         <div className="flex items-center gap-2 pt-2">
           <Camera className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
           <h2 className="text-xl font-semibold text-mist-900 dark:text-white">Scan QR Code</h2>
         </div>
 
-        {/* Scanner container with state-based UI */}
-        <div className="relative w-full overflow-hidden rounded-lg bg-black">
+        <div className="relative h-[400px] w-full overflow-hidden rounded-lg bg-black">
+          <div className="h-full w-full" data-testid="qr-scanner-region" id="qr-scanner-region" />
+
           {state.status === "requesting-permission" && (
             <div
-              className="flex h-[400px] flex-col items-center justify-center gap-4 text-white"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/70 text-white"
               role="status"
               aria-live="polite"
             >
@@ -170,7 +189,7 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
 
           {state.status === "permission-denied" && (
             <div
-              className="flex h-[400px] flex-col items-center justify-center gap-4 p-6 text-center text-white"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black p-6 text-center text-white"
               role="alert"
               aria-live="assertive"
             >
@@ -184,7 +203,7 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
 
           {state.status === "error" && (
             <div
-              className="flex h-[400px] flex-col items-center justify-center gap-4 p-6 text-center text-white"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black p-6 text-center text-white"
               role="alert"
               aria-live="assertive"
             >
@@ -196,17 +215,9 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
             </div>
           )}
 
-          {/* Scanner region - html5-qrcode injects video here */}
-          <div
-            id="qr-scanner-region"
-            className={cn(
-              state.status === "scanning" || state.status === "success" ? "block" : "hidden",
-            )}
-          />
-
           {state.status === "success" && (
             <div
-              className="absolute inset-0 flex items-center justify-center bg-black/50"
+              className="absolute inset-0 z-10 flex items-center justify-center bg-black/50"
               role="status"
               aria-live="polite"
             >
@@ -217,7 +228,6 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
           )}
         </div>
 
-        {/* Instructions */}
         {state.status === "scanning" && (
           <p
             className="text-center text-sm text-mist-600 dark:text-mist-400"
@@ -228,7 +238,6 @@ export function QRScanner({ onScan, onError, onClose }: QRScannerProps) {
           </p>
         )}
 
-        {/* Action buttons for error states */}
         {(state.status === "permission-denied" || state.status === "error") && (
           <div className="flex w-full justify-end">
             <Button onClick={handleClose} variant="light">
