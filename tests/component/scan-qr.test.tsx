@@ -457,6 +457,13 @@ describe("ScanQR Route", () => {
         expect.objectContaining({ method: "POST" }),
       );
     });
+
+    const [, request] = vi.mocked(fetch).mock.calls[0];
+    if (!request) {
+      throw new Error("Expected registration submission request");
+    }
+
+    expect((request.body as FormData).get("user")).toBe("Alice");
   });
 
   test("shows a structured registration error response", async () => {

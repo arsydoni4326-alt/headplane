@@ -185,7 +185,7 @@ export default function ScanQRPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const userItems: SelectItem[] = loaderData.users.map((user: { id: string; name: string }) => ({
-    value: user.id,
+    value: user.name,
     label: user.name,
   }));
 
