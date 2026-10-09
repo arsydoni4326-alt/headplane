@@ -4,6 +4,8 @@
 
 - Fixed QR scanner startup leaving the camera frame blank and closing it before
   startup completed crashing the page with a scanner-stop error.
+- Fixed QR registration requests bypassing Headplane's configured URL prefix
+  and showing empty errors when registration is rejected.
 - The local administrator profile cards now use the full available page width,
   configured avatars render correctly even when cached during hydration, and
   audit-entry details now open from an Action-column dialog instead of expanding

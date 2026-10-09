@@ -8,6 +8,7 @@ import {
   headscaleLiveStoreContext,
   requestApiContext,
 } from "~/server/context";
+import type { HeadscaleAPIError } from "~/server/headscale/api/error-client";
 import { nodesResource, usersResource } from "~/server/headscale/live-store";
 import type { Principal } from "~/server/web/auth";
 import { Capabilities } from "~/server/web/roles";
@@ -143,5 +144,26 @@ describe("scan QR route authorization", () => {
     expect(response).toBeInstanceOf(Response);
     expect((response as Response).status).toBe(302);
     expect((response as Response).headers.get("Location")).toBe("/machines/42");
+  });
+
+  test("returns the Headscale registration error to the scanner", async () => {
+    const { context, record, refresh, register } = createContext(true);
+    const apiError: HeadscaleAPIError = {
+      requestUrl: "POST v1/node/register",
+      statusCode: 400,
+      rawData: "registration request has expired",
+      data: { message: "registration request has expired" },
+    };
+    register.mockRejectedValue({ data: apiError });
+
+    const response = await action({ request: qrRequest(), context, params: {} } as never);
+
+    expect(response).toMatchObject({
+      type: "DataWithResponseInit",
+      data: { error: "registration request has expired" },
+      init: { status: 400 },
+    });
+    expect(refresh).not.toHaveBeenCalled();
+    expect(record).not.toHaveBeenCalled();
   });
 });

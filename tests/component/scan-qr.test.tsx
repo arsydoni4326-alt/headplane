@@ -33,6 +33,7 @@ describe("ScanQR Route", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("fetch", vi.fn());
     mockUseLoaderData.mockReturnValue({ users: mockUsers });
 
     // Default mock implementation for QRScanner
@@ -44,6 +45,28 @@ describe("ScanQR Route", () => {
       </div>
     ));
   });
+
+  async function scanValidCode(user: ReturnType<typeof userEvent.setup>) {
+    const selectInput = screen.getByRole("combobox");
+    await user.click(selectInput);
+    await user.click(screen.getByText("Alice"));
+    await user.click(screen.getByRole("button", { name: /start scanning/i }));
+
+    const onScanCallback = vi.mocked(QRScanner).mock.calls[0][0].onScan;
+    onScanCallback(
+      JSON.stringify({
+        type: "headscale-registration",
+        version: "1",
+        auth_id: "test-auth-id",
+        server_url: "https://example.com",
+        expires_at: new Date(Date.now() + 300000).toISOString(),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/qr code scanned successfully/i)).toBeInTheDocument();
+    });
+  }
 
   test("renders scan QR form with user selection", () => {
     render(<ScanQRRoute />);
@@ -418,6 +441,59 @@ describe("ScanQR Route", () => {
     });
   });
 
+  test("submits registration through the configured application prefix", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(null, { status: 302, headers: { Location: "/machines/1" } }),
+    );
+    render(<ScanQRRoute />);
+
+    await scanValidCode(user);
+    await user.click(screen.getByRole("button", { name: /register device/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/admin/machines/scan-qr",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+  });
+
+  test("shows a structured registration error response", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ error: "Registration request has expired. Start again." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(<ScanQRRoute />);
+
+    await scanValidCode(user);
+    await user.click(screen.getByRole("button", { name: /register device/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Registration request has expired. Start again."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("shows a fallback when registration fails without a response body", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 502 }));
+    render(<ScanQRRoute />);
+
+    await scanValidCode(user);
+    await user.click(screen.getByRole("button", { name: /register device/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Unable to register this device. Please try again."),
+      ).toBeInTheDocument();
+    });
+  });
+
   test("handles scanner errors from QRScanner component", async () => {
     const user = userEvent.setup();
     render(<ScanQRRoute />);
@@ -429,7 +505,7 @@ describe("ScanQR Route", () => {
 
     const onErrorCallback = vi.mocked(QRScanner).mock.calls[0][0].onError;
 
-    onErrorCallback(new Error("Camera access denied"));
+    onErrorCallback?.(new Error("Camera access denied"));
 
     await waitFor(() => {
       expect(screen.getByText(/camera access denied/i)).toBeInTheDocument();

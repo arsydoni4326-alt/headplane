@@ -11,6 +11,7 @@ import {
   headscaleLiveStoreContext,
   requestApiContext,
 } from "~/server/context";
+import { isDataWithApiError } from "~/server/headscale/api/error-client";
 import { nodesResource, usersResource } from "~/server/headscale/live-store";
 import { Capabilities } from "~/server/web/roles";
 import cn from "~/utils/cn";
@@ -132,9 +133,45 @@ export async function action({ request, context }: Route.ActionArgs) {
 
     return redirect(`/machines/${node.id}`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to register device";
-    throw data(message, { status: 500 });
+    const message = isDataWithApiError(error)
+      ? extractApiErrorMessage(error.data)
+      : error instanceof Error && error.message.trim() !== ""
+        ? error.message
+        : "Unable to register this device. Please try again.";
+    const status = isDataWithApiError(error) ? error.data.statusCode : 500;
+
+    return data({ error: message }, { status });
   }
+}
+
+function extractApiErrorMessage(error: { data?: unknown; rawData: string }) {
+  if (error.data != null && typeof error.data === "object" && "message" in error.data) {
+    const message = (error.data as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim() !== "") {
+      return message;
+    }
+  }
+
+  return error.rawData.trim() || "Unable to register this device. Please try again.";
+}
+
+async function registrationErrorMessage(response: Response) {
+  const raw = await response.text();
+  if (raw.trim() === "") {
+    return "Unable to register this device. Please try again.";
+  }
+
+  try {
+    const body = JSON.parse(raw) as { error?: unknown; message?: unknown };
+    const message = body.error ?? body.message;
+    if (typeof message === "string" && message.trim() !== "") {
+      return message;
+    }
+  } catch {
+    // The server or reverse proxy can return plain text instead of JSON.
+  }
+
+  return raw.trim() || "Unable to register this device. Please try again.";
 }
 
 export default function ScanQRPage() {
@@ -217,14 +254,13 @@ export default function ScanQRPage() {
     setIsSubmitting(true);
     try {
       const formData = new FormData(e.currentTarget);
-      const response = await fetch("/machines/scan-qr", {
+      const response = await fetch(`${__PREFIX__}/machines/scan-qr`, {
         method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to register device");
+        throw new Error(await registrationErrorMessage(response));
       }
 
       // Extract redirect location and navigate
