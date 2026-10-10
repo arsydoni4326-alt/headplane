@@ -30,11 +30,17 @@ test.describe("Admin User Management", () => {
       await page.getByRole("button", { name: "Sign In" }).click();
 
       await page.goto("/admin/users");
-      
+
       // Should see user list or empty state
-      const hasUsers = await page.getByRole("table").isVisible().catch(() => false);
-      const hasEmptyState = await page.getByText(/no users/i).isVisible().catch(() => false);
-      
+      const hasUsers = await page
+        .getByRole("table")
+        .isVisible()
+        .catch(() => false);
+      const hasEmptyState = await page
+        .getByText(/no users/i)
+        .isVisible()
+        .catch(() => false);
+
       expect(hasUsers || hasEmptyState).toBe(true);
     });
 
@@ -57,10 +63,10 @@ test.describe("Admin User Management", () => {
       await page.getByRole("button", { name: /create|save/i }).click();
 
       // Should show success or return to list
-      await expect(page.getByText(/success|created/i)).toBeVisible({ timeout: 5000 })
+      await expect(page.getByText(/success|created/i))
+        .toBeVisible({ timeout: 5000 })
         .catch(() => expect(page).toHaveURL(/\/admin\/users/));
     });
-
 
     test("can update an existing Headplane user", async ({ page, apiKey }) => {
       await page.goto("/admin/login");
@@ -73,15 +79,15 @@ test.describe("Admin User Management", () => {
       // Find and click edit on a user (if any exist)
       const editButton = page.getByRole("button", { name: /edit/i }).first();
       const hasUsers = await editButton.isVisible().catch(() => false);
-      
+
       if (hasUsers) {
         await editButton.click();
-        
+
         const usernameField = page.getByLabel(/username/i);
         if (await usernameField.isVisible()) {
           await usernameField.fill("updateduser");
         }
-        
+
         await page.getByRole("button", { name: /save|update/i }).click();
         await expect(page.getByText(/success|updated/i)).toBeVisible({ timeout: 5000 });
       } else {
@@ -99,15 +105,15 @@ test.describe("Admin User Management", () => {
 
       const deleteButton = page.getByRole("button", { name: /delete/i }).first();
       const hasUsers = await deleteButton.isVisible().catch(() => false);
-      
+
       if (hasUsers) {
         await deleteButton.click();
-        
+
         const confirmButton = page.getByRole("button", { name: /confirm|yes|delete/i });
         if (await confirmButton.isVisible()) {
           await confirmButton.click();
         }
-        
+
         await expect(page.getByText(/success|deleted/i)).toBeVisible({ timeout: 5000 });
       } else {
         test.skip();
@@ -118,10 +124,10 @@ test.describe("Admin User Management", () => {
   test.describe("with password authentication", () => {
     test("can access admin users page with password", async ({ page }) => {
       await page.goto("/admin/login");
-      
+
       const passwordField = page.getByPlaceholder("Password");
       const hasPassword = await passwordField.isVisible();
-      
+
       if (!hasPassword) {
         test.skip();
         return;
@@ -130,7 +136,8 @@ test.describe("Admin User Management", () => {
       await passwordField.fill("test-password");
       await page.getByRole("button", { name: "Sign In" }).click();
 
-      const isLoggedIn = await page.waitForURL(/\/(machines|admin)/, { timeout: 5000 })
+      const isLoggedIn = await page
+        .waitForURL(/\/(machines|admin)/, { timeout: 5000 })
         .then(() => true)
         .catch(() => false);
 

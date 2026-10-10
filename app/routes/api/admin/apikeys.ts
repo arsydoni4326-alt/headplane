@@ -39,10 +39,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 
   const apiKey = auth.getHeadscaleApiKey(principal);
   if (!apiKey) {
-    throw data(
-      { error: "No Headscale API key available for this session" },
-      { status: 500 },
-    );
+    throw data({ error: "No Headscale API key available for this session" }, { status: 500 });
   }
 
   try {
@@ -71,10 +68,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       metadata: { error: String(error) },
     });
 
-    throw data(
-      { error: "Failed to retrieve API keys from Headscale" },
-      { status: 502 },
-    );
+    throw data({ error: "Failed to retrieve API keys from Headscale" }, { status: 502 });
   }
 }
 
@@ -92,18 +86,12 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   // Require admin privileges
   if (!isAdmin(auth, principal)) {
-    throw createUnauthorizedResponse(
-      principal,
-      "You do not have permission to manage API keys.",
-    );
+    throw createUnauthorizedResponse(principal, "You do not have permission to manage API keys.");
   }
 
   const apiKey = auth.getHeadscaleApiKey(principal);
   if (!apiKey) {
-    throw data(
-      { error: "No Headscale API key available for this session" },
-      { status: 500 },
-    );
+    throw data({ error: "No Headscale API key available for this session" }, { status: 500 });
   }
 
   const method = request.method;

@@ -119,6 +119,16 @@ subdirectories. Feature changes must update the relevant pages here.
 4. Headscale configuration changes (e.g. DNS) are written back through the
    config loader and provisioned into the Headscale process.
 
+### QR registration
+
+1. The Machines overview links to `/machines/scan-qr`; the route requires
+   machine-write permission and loads selectable Headscale users.
+2. The browser scanner decodes the QR image. The route checks the payload type,
+   version, auth ID, server URL syntax, and expiry before allowing submission.
+3. The action passes the auth ID and selected user to Headscale's existing node
+   registration API. Headscale rejects missing, expired, or already-consumed
+   registration IDs.
+
 ### Persistence
 
 - Headplane-specific data (users, sessions, agent metadata, caches) lives

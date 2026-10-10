@@ -2,6 +2,14 @@
 
 ## Fixes
 
+- Fixed QR scanner startup leaving the camera frame blank and closing it before
+  startup completed crashing the page with a scanner-stop error.
+- Fixed QR registration requests bypassing Headplane's configured URL prefix
+  and showing empty errors when registration is rejected.
+- Fixed QR registration submitting the selected owner's internal ID instead of
+  the Headscale username required by the registration API.
+- Fixed QR registration displaying a full Headplane document as an error by
+  submitting through React Router's action transport.
 - The local administrator profile cards now use the full available page width,
   configured avatars render correctly even when cached during hydration, and
   audit-entry details now open from an Action-column dialog instead of expanding

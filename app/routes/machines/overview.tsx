@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Info, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, QrCode, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -300,6 +300,16 @@ export default function Page({ loaderData }: Route.ComponentProps) {
     setSelectedIds(new Set());
   }, [searchQuery, filterUser, filterTag, filterStatus, filterRoute, filterOS, filterExpiry]);
 
+  const scanQRClassName = cn(
+    "inline-flex w-fit items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm",
+    "transition-colors duration-100 active:scale-[0.98]",
+    "focus:outline-hidden focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-1",
+    "dark:focus:ring-indigo-400/40 dark:focus:ring-offset-mist-900",
+    "border border-mist-200 bg-white font-medium hover:bg-mist-50",
+    "dark:border-mist-700 dark:bg-mist-800/50 dark:hover:bg-mist-700/50",
+    !loaderData.writable && "pointer-events-none opacity-50",
+  );
+
   // Handle empty state: no machines at all
   if (loaderData.populatedNodes.length === 0) {
     return (
@@ -314,12 +324,18 @@ export default function Page({ loaderData }: Route.ComponentProps) {
               </Link>
             </p>
           </div>
-          <NewMachine
-            disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
-            isDisabled={!loaderData.writable}
-            server={loaderData.publicServer ?? loaderData.server}
-            users={loaderData.users}
-          />
+          <div className="flex gap-3">
+            <Link to="/machines/scan-qr" className={scanQRClassName}>
+              <QrCode className="h-4 w-4" />
+              Scan QR
+            </Link>
+            <NewMachine
+              disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
+              isDisabled={!loaderData.writable}
+              server={loaderData.publicServer ?? loaderData.server}
+              users={loaderData.users}
+            />
+          </div>
         </div>
         <EmptyState
           title="No machines yet"
@@ -346,12 +362,18 @@ export default function Page({ loaderData }: Route.ComponentProps) {
             </Link>
           </p>
         </div>
-        <NewMachine
-          disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
-          isDisabled={!loaderData.writable}
-          server={loaderData.publicServer ?? loaderData.server}
-          users={loaderData.users}
-        />
+        <div className="flex gap-3">
+          <Link to="/machines/scan-qr" className={scanQRClassName}>
+            <QrCode className="h-4 w-4" />
+            Scan QR
+          </Link>
+          <NewMachine
+            disabledKeys={loaderData.preAuth ? [] : ["pre-auth"]}
+            isDisabled={!loaderData.writable}
+            server={loaderData.publicServer ?? loaderData.server}
+            users={loaderData.users}
+          />
+        </div>
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative w-64">
