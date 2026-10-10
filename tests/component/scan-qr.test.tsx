@@ -12,6 +12,13 @@ vi.mock("~/components/qr-scanner", () => ({
 // Mock react-router
 const mockNavigate = vi.fn();
 const mockUseLoaderData = vi.fn();
+const mockFetcherSubmit = vi.fn();
+const mockUseFetcher = vi.fn();
+const mockFetcher = {
+  data: undefined as { error?: string } | undefined,
+  state: "idle",
+  submit: mockFetcherSubmit,
+};
 
 vi.mock("react-router", async () => {
   const actual = await vi.importActual("react-router");
@@ -19,6 +26,7 @@ vi.mock("react-router", async () => {
     ...actual,
     useNavigate: () => mockNavigate,
     useLoaderData: mockUseLoaderData,
+    useFetcher: () => mockUseFetcher(),
   };
 });
 
@@ -33,8 +41,10 @@ describe("ScanQR Route", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", vi.fn());
     mockUseLoaderData.mockReturnValue({ users: mockUsers });
+    mockFetcher.data = undefined;
+    mockFetcher.state = "idle";
+    mockUseFetcher.mockReturnValue(mockFetcher);
 
     // Default mock implementation for QRScanner
     vi.mocked(QRScanner).mockImplementation(({ onScan, onError, onClose }: any) => (
@@ -441,64 +451,54 @@ describe("ScanQR Route", () => {
     });
   });
 
-  test("submits registration through the configured application prefix", async () => {
+  test("submits registration through the route action transport", async () => {
     const user = userEvent.setup();
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(null, { status: 302, headers: { Location: "/machines/1" } }),
-    );
     render(<ScanQRRoute />);
 
     await scanValidCode(user);
     await user.click(screen.getByRole("button", { name: /register device/i }));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        "/admin/machines/scan-qr",
-        expect.objectContaining({ method: "POST" }),
-      );
+      expect(mockFetcherSubmit).toHaveBeenCalledWith(expect.any(FormData), { method: "POST" });
     });
 
-    const [, request] = vi.mocked(fetch).mock.calls[0];
-    if (!request) {
-      throw new Error("Expected registration submission request");
+    const [form] = mockFetcherSubmit.mock.calls[0];
+    if (!(form instanceof FormData)) {
+      throw new Error("Expected registration action form data");
     }
 
-    expect((request.body as FormData).get("user")).toBe("Alice");
+    expect(form.get("user")).toBe("Alice");
+    expect(form.get("qr_data")).toContain("test-auth-id");
   });
 
-  test("shows a structured registration error response", async () => {
+  test("shows the structured registration action error", async () => {
     const user = userEvent.setup();
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ error: "Registration request has expired. Start again." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    render(<ScanQRRoute />);
+    const { rerender } = render(<ScanQRRoute />);
 
     await scanValidCode(user);
     await user.click(screen.getByRole("button", { name: /register device/i }));
 
+    mockFetcher.state = "submitting";
+    rerender(<ScanQRRoute />);
+    mockFetcher.data = { error: "user not found" };
+    mockFetcher.state = "idle";
+    rerender(<ScanQRRoute />);
+
     await waitFor(() => {
-      expect(
-        screen.getByText("Registration request has expired. Start again."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("user not found")).toBeInTheDocument();
     });
   });
 
-  test("shows a fallback when registration fails without a response body", async () => {
+  test("disables registration while the action is submitting", async () => {
     const user = userEvent.setup();
-    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 502 }));
-    render(<ScanQRRoute />);
+    const { rerender } = render(<ScanQRRoute />);
 
     await scanValidCode(user);
-    await user.click(screen.getByRole("button", { name: /register device/i }));
 
-    await waitFor(() => {
-      expect(
-        screen.getByText("Unable to register this device. Please try again."),
-      ).toBeInTheDocument();
-    });
+    mockFetcher.state = "submitting";
+    rerender(<ScanQRRoute />);
+
+    expect(screen.getByRole("button", { name: /registering/i })).toBeDisabled();
   });
 
   test("handles scanner errors from QRScanner component", async () => {

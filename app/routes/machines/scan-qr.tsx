@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { data, redirect, useLoaderData, useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { data, redirect, useFetcher, useLoaderData, useNavigate } from "react-router";
 
 import Button from "~/components/button";
 import { QRScanner } from "~/components/qr-scanner";
@@ -145,44 +145,55 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 function extractApiErrorMessage(error: { data?: unknown; rawData: string }) {
-  if (error.data != null && typeof error.data === "object" && "message" in error.data) {
-    const message = (error.data as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim() !== "") {
-      return message;
+  if (error.data != null && typeof error.data === "object") {
+    if ("errors" in error.data && Array.isArray(error.data.errors)) {
+      const message = error.data.errors.find(
+        (entry): entry is { message: string } =>
+          entry != null &&
+          typeof entry === "object" &&
+          "message" in entry &&
+          typeof entry.message === "string" &&
+          entry.message.trim() !== "",
+      )?.message;
+      if (message) {
+        return message;
+      }
+    }
+
+    if ("message" in error.data) {
+      const message = error.data.message;
+      if (typeof message === "string" && message.trim() !== "") {
+        return message;
+      }
     }
   }
 
   return error.rawData.trim() || "Unable to register this device. Please try again.";
 }
 
-async function registrationErrorMessage(response: Response) {
-  const raw = await response.text();
-  if (raw.trim() === "") {
-    return "Unable to register this device. Please try again.";
-  }
-
-  try {
-    const body = JSON.parse(raw) as { error?: unknown; message?: unknown };
-    const message = body.error ?? body.message;
-    if (typeof message === "string" && message.trim() !== "") {
-      return message;
-    }
-  } catch {
-    // The server or reverse proxy can return plain text instead of JSON.
-  }
-
-  return raw.trim() || "Unable to register this device. Please try again.";
-}
-
 export default function ScanQRPage() {
   const loaderData = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const fetcher = useFetcher<{ error?: string }>();
 
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [showScanner, setShowScanner] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittedRef = useRef(false);
+  const isSubmitting = fetcher.state !== "idle";
+
+  useEffect(() => {
+    if (fetcher.state !== "idle") {
+      submittedRef.current = true;
+      return;
+    }
+
+    if (submittedRef.current) {
+      submittedRef.current = false;
+      setError(fetcher.data?.error ?? null);
+    }
+  }, [fetcher.data, fetcher.state]);
 
   const userItems: SelectItem[] = loaderData.users.map((user: { id: string; name: string }) => ({
     value: user.name,
@@ -244,32 +255,15 @@ export default function ScanQRPage() {
     setShowScanner(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!scannedData || !selectedUser) {
       setError("Please scan a QR code and select a user");
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData(e.currentTarget);
-      const response = await fetch(`${__PREFIX__}/machines/scan-qr`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(await registrationErrorMessage(response));
-      }
-
-      // Extract redirect location and navigate
-      const redirectUrl = response.headers.get("Location") || response.url;
-      navigate(redirectUrl.replace(window.location.origin, ""));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to register device");
-      setIsSubmitting(false);
-    }
+    setError(null);
+    fetcher.submit(new FormData(e.currentTarget), { method: "POST" });
   };
 
   return (
